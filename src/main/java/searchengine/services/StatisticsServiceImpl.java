@@ -21,6 +21,7 @@ import searchengine.repositories.SiteRepository;
 
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.concurrent.CancellationException;
 import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.ForkJoinPool;
 import java.util.stream.Collectors;
@@ -33,6 +34,8 @@ public class StatisticsServiceImpl implements StatisticsService {
     private final SitesList sites;//создаем список сайтов
     private final PageRepository pageRepository;
     private final SiteRepository siteRepository;
+    @Getter
+    private static boolean isShutdown = false;
 
     @Override
     public StatisticsResponse getStatistics() {
@@ -68,7 +71,6 @@ public class StatisticsServiceImpl implements StatisticsService {
 
             siteRepository.deleteByUrl(item.getUrl());
             siteRepository.save(mapToEntity(item));
-
         }
 
         StatisticsResponse response = new StatisticsResponse();//класс возврата списка сайтов с деталями
@@ -81,58 +83,63 @@ public class StatisticsServiceImpl implements StatisticsService {
         return response;
     }
 
-    public boolean startIndexing() {
+    public boolean startIndexing(Site site) {
+
         String regexUpdateUrl = "www.";
         CopyOnWriteArraySet<PageEntity> pageEntities = new CopyOnWriteArraySet<>();
-        boolean isEnd = false;
-        for (Site site : sites.getSites()) {
 
-            siteRepository.deleteByUrl(site.getUrl());
-            SiteEntity siteEntity = new SiteEntity();
-            siteEntity.setName(site.getName());
-            siteEntity.setUrl(site.getUrl());
-            siteEntity.setStatus(EnumStatus.INDEXING);
-            siteEntity.setStatusTime(LocalDateTime.now());
+        siteRepository.deleteByUrl(site.getUrl());
+        SiteEntity siteEntity = new SiteEntity();
+        siteEntity.setName(site.getName());
+        siteEntity.setUrl(site.getUrl());
+        siteEntity.setStatus(EnumStatus.INDEXING);
+        siteEntity.setStatusTime(LocalDateTime.now());
+        synchronized (siteEntity) {
             siteRepository.save(siteEntity);
-
-            PageEntity page = new PageEntity();
-            String baseUrl = site.getUrl().contains(regexUpdateUrl) ?
-                    site.getUrl().replace(regexUpdateUrl, "") : site.getUrl();
-            page.setPath(baseUrl);
-
-            try {
-                pageEntities = new ForkJoinPool().invoke(new SiteMap(page));
-                PageEntity pageInitialSite = pageEntities.stream().filter(p -> p.equals(page)).findFirst().get();
-                if (pageInitialSite.getCode() == 500) {
-                    throw new Exception(pageInitialSite.getContent());
-                }
-                Set<PageEntity> listPage = pageEntities.stream().parallel().map(p -> {
-                            p.setSite(siteEntity);
-                            p.setPath(p.getPath().replaceAll(baseUrl, ""));
-                            return p;
-                        }).filter(p -> !(p.getPath().isEmpty()))
-                        .collect(Collectors.toSet());
-
-//                Set<PageEntity> listPage = pageEntities.stream().filter(p -> p.equals(page))
-//                        .forEach(p -> p.getCode().equals(200) ? getSetPage(pageEntities, siteEntity, baseUrl));
-////                        .forEach(p -> siteEntity.setError(p.getContent()));
-
-                siteEntity.setPage(listPage);
-                siteEntity.setStatus(EnumStatus.INDEXED);
-                siteEntity.setStatusTime(LocalDateTime.now());
-                siteRepository.save(siteEntity);
-
-
-            } catch (Exception exception) {
-                siteEntity.setError("Ошибка индексации: сайт не доступен: " + exception.getLocalizedMessage());
-                siteEntity.setStatusTime(LocalDateTime.now());
-                siteEntity.setStatus(EnumStatus.FAILED);
-                siteRepository.save(siteEntity);
-//                exception.printStackTrace();
-            }
-            pageEntities.clear();
         }
 
+        PageEntity page = new PageEntity();
+        String baseUrl = site.getUrl().contains(regexUpdateUrl) ?
+                site.getUrl().replace(regexUpdateUrl, "") : site.getUrl();
+        page.setPath(baseUrl);
+        ForkJoinPool forkJoinPool = new ForkJoinPool();
+        try {
+            pageEntities = forkJoinPool.invoke(new SiteMap(page));
+            PageEntity pageInitialSite = pageEntities.stream().filter(p -> p.equals(page)).findFirst().get();
+            if (pageInitialSite.getCode() != 200) {
+                throw new Exception(pageInitialSite.getContent());
+            }
+            Set<PageEntity> listPage = pageEntities.stream().parallel().map(p -> {
+                        p.setSite(siteEntity);
+                        p.setPath(p.getPath().replaceAll(baseUrl, ""));
+                        return p;
+                    }).filter(p -> !(p.getPath().isEmpty()))
+                    .collect(Collectors.toSet());
+
+            siteEntity.setPage(listPage);
+            siteEntity.setStatus(EnumStatus.INDEXED);
+            siteEntity.setStatusTime(LocalDateTime.now());
+            synchronized (siteEntity) {
+                siteRepository.save(siteEntity);
+            }
+        } catch (CancellationException exception) {
+            forkJoinPool.shutdownNow();
+            siteEntity.setError("Индексация остановлена пользователем: " + exception);
+            siteEntity.setStatusTime(LocalDateTime.now());
+            siteEntity.setStatus(EnumStatus.FAILED);
+            synchronized (siteEntity) {
+                siteRepository.save(siteEntity);
+            }
+
+        } catch (Exception exception) {
+            siteEntity.setError("Ошибка индексации: сайт не доступен: " + exception);
+            siteEntity.setStatusTime(LocalDateTime.now());
+            siteEntity.setStatus(EnumStatus.FAILED);
+            synchronized (siteEntity) {
+                siteRepository.save(siteEntity);
+            }
+        }
+        pageEntities.clear();
         return true;
     }
 
@@ -152,13 +159,7 @@ public class StatisticsServiceImpl implements StatisticsService {
     public SitesList getSites() {
         return sites;
     }
+    public static void isShutdownNow(Boolean isShut) {
+        isShutdown = isShut;
+    }
 }
-//                pageEntities.forEach(p -> p.setSiteId(siteEntity));
-//                pageEntities.forEach(p -> p.setPath(p.getPath().replaceAll(regexStartUrl, "")));
-//                ParseHTML parseHTML = new ParseHTML();
-//                TreeSet<PageEntity> pageEntit = parseHTML.getParseUrl(page);
-//                SiteMap1 siteMap1 = new SiteMap1(page);
-//                CopyOnWriteArraySet<PageEntity> pageEntities=siteMap1.compute();
-//                pageEntities.size();
-//                siteEntity.setPageId(pageEntities);
-//                siteEntity.setStatus(EnumStatus.INDEXED);

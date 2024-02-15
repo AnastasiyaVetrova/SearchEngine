@@ -1,29 +1,24 @@
 package searchengine.parsers;
 
-
 import org.jsoup.Connection;
 import org.jsoup.Jsoup;
-import org.jsoup.helper.HttpConnection;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 import searchengine.model.PageEntity;
 
 import java.io.IOException;
-import java.net.UnknownHostException;
 import java.util.TreeSet;
 
 public class ParseHTML {
 
-    public TreeSet<PageEntity> getParseUrl(PageEntity page){
+    public TreeSet<PageEntity> getParseUrl(PageEntity page) {
         TreeSet<PageEntity> treeSetUrl = new TreeSet<>();
         String pageUrl = page.getPath();
-
-        Connection connection=Jsoup.connect(page.getPath());;
+        Connection connection = Jsoup.connect(page.getPath());
 
         try {
-
-            Document document = connection.timeout(500).get();
+            Document document = connection.get();
             page.setCode(connection.response().statusCode());
             Elements elements = document.select("a[href]");
 
@@ -41,6 +36,10 @@ public class ParseHTML {
                 treeSetUrl.add(pageEntity);
             }
         } catch (IOException e) {
+//            String body = connection.response().body();
+//            if (body.isEmpty()) {connection.response().statusCode()
+//                page.setCode(500);
+//            } else {
             page.setCode(500);
             page.setContent(e.toString());
             treeSetUrl.add(page);
