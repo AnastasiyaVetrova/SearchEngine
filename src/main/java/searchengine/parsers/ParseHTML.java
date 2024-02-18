@@ -6,15 +6,18 @@ import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 import searchengine.model.PageEntity;
+import searchengine.model.SiteEntity;
 
 import java.io.IOException;
 import java.util.TreeSet;
 
 public class ParseHTML {
 
-    public TreeSet<PageEntity> getParseUrl(PageEntity page) {
+    public TreeSet<PageEntity> getParseUrl(PageEntity page, SiteEntity siteEntity) {
         TreeSet<PageEntity> treeSetUrl = new TreeSet<>();
-        String pageUrl = page.getPath();
+        String regex1 = "https?://(www.)?";
+        String baseUrl =siteEntity.getUrl().replaceAll(regex1,"");
+//        String pageUrl = page.getPath();
         Connection connection = Jsoup.connect(page.getPath());
 
         try {
@@ -24,7 +27,7 @@ public class ParseHTML {
 
             for (Element element : elements) {
                 String elemUrl = element.absUrl("href");
-                boolean isRegexUrl = elemUrl.contains(pageUrl)
+                boolean isRegexUrl = elemUrl.contains(baseUrl)
                         && elemUrl.matches("[^#]+") &&
                         !elemUrl.endsWith("pdf");
                 if (!isRegexUrl) {
@@ -33,6 +36,7 @@ public class ParseHTML {
                 PageEntity pageEntity = new PageEntity();
                 pageEntity.setPath(elemUrl);
                 pageEntity.setContent(Jsoup.connect(elemUrl).get().toString());
+                pageEntity.setSite(siteEntity);
                 treeSetUrl.add(pageEntity);
             }
         } catch (IOException e) {
@@ -43,11 +47,13 @@ public class ParseHTML {
             page.setCode(500);
             page.setContent(e.toString());
             treeSetUrl.add(page);
+            e.printStackTrace();
 
         } catch (Exception e) {
             page.setCode(connection.response().statusCode());
             page.setContent(e.toString());
             treeSetUrl.add(page);
+            e.printStackTrace();
         }
         return treeSetUrl;
     }

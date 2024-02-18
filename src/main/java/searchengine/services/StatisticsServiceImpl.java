@@ -104,40 +104,42 @@ public class StatisticsServiceImpl implements StatisticsService {
         page.setPath(baseUrl);
         ForkJoinPool forkJoinPool = new ForkJoinPool();
         try {
-            pageEntities = forkJoinPool.invoke(new SiteMap(page));
-            PageEntity pageInitialSite = pageEntities.stream().filter(p -> p.equals(page)).findFirst().get();
-            if (pageInitialSite.getCode() != 200) {
-                throw new Exception(pageInitialSite.getContent());
-            }
-            Set<PageEntity> listPage = pageEntities.stream().parallel().map(p -> {
-                        p.setSite(siteEntity);
-                        p.setPath(p.getPath().replaceAll(baseUrl, ""));
-                        return p;
-                    }).filter(p -> !(p.getPath().isEmpty()))
-                    .collect(Collectors.toSet());
+            pageEntities = forkJoinPool.invoke(new SiteMap(page, pageRepository,siteRepository,siteEntity));
+//            PageEntity pageInitialSite = pageEntities.stream().filter(p -> p.equals(page)).findFirst().get();
+//            if (pageInitialSite.getCode() != 200) {
+//                throw new Exception(pageInitialSite.getContent());
+//            }
+//            Set<PageEntity> listPage = pageEntities.stream().parallel().map(p -> {
+//                        p.setSite(siteEntity);
+//                        p.setPath(p.getPath().replaceAll(baseUrl, ""));
+//                        return p;
+//                    }).filter(p -> !(p.getPath().isEmpty()))
+//                    .collect(Collectors.toSet());
 
-            siteEntity.setPage(listPage);
+//            siteEntity.setPage(listPage);
             siteEntity.setStatus(EnumStatus.INDEXED);
             siteEntity.setStatusTime(LocalDateTime.now());
-            synchronized (siteEntity) {
-                siteRepository.save(siteEntity);
-            }
+//            synchronized (siteEntity) {
+//                siteRepository.save(siteEntity);
+//            }
         } catch (CancellationException exception) {
             forkJoinPool.shutdownNow();
             siteEntity.setError("Индексация остановлена пользователем: " + exception);
             siteEntity.setStatusTime(LocalDateTime.now());
             siteEntity.setStatus(EnumStatus.FAILED);
-            synchronized (siteEntity) {
-                siteRepository.save(siteEntity);
-            }
+            exception.printStackTrace();
+//            synchronized (siteEntity) {
+//                siteRepository.save(siteEntity);
+//            }
 
         } catch (Exception exception) {
             siteEntity.setError("Ошибка индексации: сайт не доступен: " + exception);
             siteEntity.setStatusTime(LocalDateTime.now());
             siteEntity.setStatus(EnumStatus.FAILED);
-            synchronized (siteEntity) {
-                siteRepository.save(siteEntity);
-            }
+            exception.printStackTrace();
+//            synchronized (siteEntity) {
+//                siteRepository.save(siteEntity);
+//            }
         }
         pageEntities.clear();
         return true;

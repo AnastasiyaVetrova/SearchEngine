@@ -29,5 +29,5 @@ indexing-settings:
 #      name: Skillbox
     - url: https://www.playback.ru
       name: PlayBack.Ru
-    - url: https://et-cetera.ru/mobile/
-      name: et-cetera
+#    - url: https://et-cetera.ru/mobile/
+#      name: et-cetera
