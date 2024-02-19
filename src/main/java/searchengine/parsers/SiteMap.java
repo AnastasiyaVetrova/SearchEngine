@@ -54,7 +54,7 @@ public class SiteMap extends RecursiveAction {
                 continue;
             }
 
-            resultUrl.add(page);
+            savePageToDBOne(page,siteEntity);
             SiteMap siteMap = new SiteMap(page, pageRepository, siteRepository, siteEntity);
             if (shutdownTreadTask()) {
                 siteMap.cancel(shutdownTreadTask());
@@ -64,7 +64,10 @@ public class SiteMap extends RecursiveAction {
                 siteLink.add(siteMap);
             }
         }
-        savePageToDB(resultUrl, siteEntity);
+        for (SiteMap map : siteLink) {
+            map.join();
+        }
+//        savePageToDB(resultUrl, siteEntity);
 //        for (SiteMap map : siteLink) {
 //            if (shutdownTreadTask()) {
 //                map.cancel(shutdownTreadTask());
@@ -105,8 +108,9 @@ public class SiteMap extends RecursiveAction {
 
 //        if (!pageEntity.getPath().isEmpty()) {
         synchronized (siteEntity) {
-            siteEntity.setOnePage(pageEntity);
+
             siteEntity.setStatusTime(LocalDateTime.now());
+            pageRepository.save(pageEntity);
             siteRepository.save(siteEntity);
         }
     }
@@ -143,7 +147,7 @@ public class SiteMap extends RecursiveAction {
 //                }).filter(p -> !(p.getPath().isEmpty()))
 //                .collect(Collectors.toSet());
         synchronized (siteEntity) {
-            siteEntity.setPage(pageEntities);
+//            siteEntity.setPage(pageEntities);
             siteEntity.setStatusTime(LocalDateTime.now());
             siteRepository.save(siteEntity);
         }

@@ -15,6 +15,7 @@ import searchengine.dto.statistics.TotalStatistics;
 import searchengine.model.EnumStatus;
 import searchengine.model.PageEntity;
 import searchengine.model.SiteEntity;
+import searchengine.parsers.ParseHTML;
 import searchengine.parsers.SiteMap;
 import searchengine.repositories.PageRepository;
 import searchengine.repositories.SiteRepository;
@@ -99,12 +100,17 @@ public class StatisticsServiceImpl implements StatisticsService {
         }
 
         PageEntity page = new PageEntity();
-        String baseUrl = site.getUrl().contains(regexUpdateUrl) ?
-                site.getUrl().replace(regexUpdateUrl, "") : site.getUrl();
-        page.setPath(baseUrl);
+//        String baseUrl = site.getUrl().contains(regexUpdateUrl) ?
+//                site.getUrl().replace(regexUpdateUrl, "") : site.getUrl();
+        page.setPath(siteEntity.getUrl());
+//        ParseHTML parseHTML=new ParseHTML();
+//        parseHTML.getParseUrl(page,siteEntity);
+
         ForkJoinPool forkJoinPool = new ForkJoinPool();
         try {
             forkJoinPool.invoke(new SiteMap(page, pageRepository,siteRepository,siteEntity));
+
+
 //            PageEntity pageInitialSite = pageEntities.stream().filter(p -> p.equals(page)).findFirst().get();
 //            if (pageInitialSite.getCode() != 200) {
 //                throw new Exception(pageInitialSite.getContent());
@@ -117,11 +123,11 @@ public class StatisticsServiceImpl implements StatisticsService {
 //                    .collect(Collectors.toSet());
 
 //            siteEntity.setPage(listPage);
-//            siteEntity.setStatus(EnumStatus.INDEXED);
-//            siteEntity.setStatusTime(LocalDateTime.now());
-//            synchronized (siteEntity) {
-//                siteRepository.save(siteEntity);
-//            }
+            siteEntity.setStatus(EnumStatus.INDEXED);
+            siteEntity.setStatusTime(LocalDateTime.now());
+            synchronized (siteEntity) {
+                siteRepository.save(siteEntity);
+            }
         } catch (CancellationException exception) {
             forkJoinPool.shutdownNow();
             siteEntity.setError("Индексация остановлена пользователем: " + exception);

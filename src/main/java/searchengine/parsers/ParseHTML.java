@@ -15,8 +15,9 @@ public class ParseHTML {
 
     public TreeSet<PageEntity> getParseUrl(PageEntity page, SiteEntity siteEntity) {
         TreeSet<PageEntity> treeSetUrl = new TreeSet<>();
-
-        String pageUrl =siteEntity.getUrl().concat(page.getPath());
+        String pageUrl = page.getPath().contains(siteEntity.getUrl()) ? page.getPath() :
+                siteEntity.getUrl().concat(page.getPath());
+//        String pageUrl =siteEntity.getUrl().concat(page.getPath());
 //        String pageUrl = page.getPath();
         Connection connection = Jsoup.connect(pageUrl);
 
@@ -36,7 +37,8 @@ public class ParseHTML {
                 }
                 PageEntity pageEntity = new PageEntity();
                 pageEntity.setPath(elemUrl);
-                Connection connection1 = Jsoup.connect(elemUrl);
+//                String path = siteEntity.getUrl().concat(elemUrl);
+                Connection connection1 = Jsoup.connect(siteEntity.getUrl().concat(elemUrl));
                 pageEntity.setContent(connection1.get().toString());
                 pageEntity.setCode(connection.response().statusCode());
                 pageEntity.setSite(siteEntity);
