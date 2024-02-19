@@ -15,10 +15,10 @@ public class ParseHTML {
 
     public TreeSet<PageEntity> getParseUrl(PageEntity page, SiteEntity siteEntity) {
         TreeSet<PageEntity> treeSetUrl = new TreeSet<>();
-        String regex1 = "https?://(www.)?";
-        String baseUrl =siteEntity.getUrl().replaceAll(regex1,"");
+
+        String pageUrl =siteEntity.getUrl().concat(page.getPath());
 //        String pageUrl = page.getPath();
-        Connection connection = Jsoup.connect(page.getPath());
+        Connection connection = Jsoup.connect(pageUrl);
 
         try {
             Document document = connection.get();
@@ -26,8 +26,8 @@ public class ParseHTML {
             Elements elements = document.select("a[href]");
 
             for (Element element : elements) {
-                String elemUrl = element.absUrl("href");
-                boolean isRegexUrl = elemUrl.contains(baseUrl)
+                String elemUrl = element.attr("href");
+                boolean isRegexUrl =  elemUrl.startsWith("/")
                         && elemUrl.matches("[^#]+") &&
                         !elemUrl.endsWith("pdf")&&
                         !elemUrl.endsWith("jpg");
@@ -36,7 +36,9 @@ public class ParseHTML {
                 }
                 PageEntity pageEntity = new PageEntity();
                 pageEntity.setPath(elemUrl);
-                pageEntity.setContent(Jsoup.connect(elemUrl).get().toString());
+                Connection connection1 = Jsoup.connect(elemUrl);
+                pageEntity.setContent(connection1.get().toString());
+                pageEntity.setCode(connection.response().statusCode());
                 pageEntity.setSite(siteEntity);
                 treeSetUrl.add(pageEntity);
             }
