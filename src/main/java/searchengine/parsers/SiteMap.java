@@ -26,6 +26,8 @@ public class SiteMap extends RecursiveTask<CopyOnWriteArraySet<PageEntity>> {
     private final SiteEntity siteEntity;
     private final String regex = "(www.)?";
     private final String baseUrl;
+    //содержит все ссылки
+    private static final CopyOnWriteArraySet<String> WORK_PAGE = new CopyOnWriteArraySet<>();
 
     public SiteMap(PageEntity pageEntity, PageRepository pageRepository, SiteRepository siteRepository, SiteEntity siteEntity) {
         this.pageEntity = pageEntity;
@@ -41,24 +43,25 @@ public class SiteMap extends RecursiveTask<CopyOnWriteArraySet<PageEntity>> {
     protected CopyOnWriteArraySet<PageEntity> compute() {
         CopyOnWriteArraySet<PageEntity> resultUrl = new CopyOnWriteArraySet<>();
         ParseHTML parseHTML = new ParseHTML();//парсинг- pageEntity
+        //Получаю все страницы родительской стр, но записать в бд их не могу,
+        // т.к. к ним еще не было подключения и код statusCode() не установлен
         TreeSet<PageEntity> allUrl = parseHTML.getParseUrl(pageEntity, siteEntity);
-        TreeSet<PageEntity> allUrl2 = new TreeSet<>();
-        List<SiteMap> siteLink = new ArrayList<>();//лист с заданиями - url
 
+        List<SiteMap> siteLink = new ArrayList<>();//лист с заданиями - url
+        //страница со статусом может записаться здесь либо в получении результатов
+//        savePageToDBOne(pageEntity, siteEntity);
         try {
             Thread.sleep(150);
         } catch (Exception exception) {
             exception.printStackTrace();
         }
         for (PageEntity page : allUrl) {
-
-            if (findPageToDB(page)) {
-//                allUrl.remove(page);
+            //Проверка на повторы, на этом этапе в бд еще не записаны ссылки
+            if (WORK_PAGE.contains(page.getPath())) {
                 continue;
             }
-            allUrl2.add(page);
-//            pageRepository.save(page);
-//            WORK_PAGE.add(page);
+            WORK_PAGE.add(page.getPath());
+            resultUrl.add(page);
             SiteMap siteMap = new SiteMap(page, pageRepository, siteRepository, siteEntity);
             if (shutdownTreadTask()) {
                 siteMap.cancel(shutdownTreadTask());
@@ -68,24 +71,23 @@ public class SiteMap extends RecursiveTask<CopyOnWriteArraySet<PageEntity>> {
                 siteLink.add(siteMap);
             }
         }
-//        resultUrl.add(pageEntity);
-        savePageToDBOne(pageEntity, siteEntity);
+
         for (SiteMap map : siteLink) {
             if (shutdownTreadTask()) {
                 map.cancel(shutdownTreadTask());
                 throw new CancellationException();
             } else {
                 for (PageEntity page : map.join()) {
-                if (findPageToDB(page)){
-                    continue;
+                    if (findPageToDB(page)) {
+                        continue;
+                    }
+                    savePageToDBOne(page, siteEntity);
                 }
-                    savePageToDBTwo(map.join(), siteEntity);}
-//                resultUrl.addAll(map.join());
             }
         }
-//        if (WORK_PAGE.size() == 5000) {
-//            WORK_PAGE.clear();
-//        }
+        if (WORK_PAGE.size() == 5000) {
+            WORK_PAGE.clear();
+        }
         return resultUrl;
 //    }
     }
@@ -136,18 +138,10 @@ public class SiteMap extends RecursiveTask<CopyOnWriteArraySet<PageEntity>> {
 
     private void savePageToDBOne(PageEntity pageEntity, SiteEntity siteEntity) {
         pageEntity.setPath(pageEntity.getPath().replaceAll(baseUrl, ""));
-//        Set<PageEntity> listPage = pageEntities.stream().parallel().map(p -> {
-//                    p.setSite(siteEntity);
-//                    p.setPath(p.getPath().replaceAll(baseUrl, ""));
-//                    return p;
-//                }).filter(p -> !(p.getPath().isEmpty()))
-//                .collect(Collectors.toSet());
-        if (!pageEntity.getPath().isEmpty()) {
-            TreeSet<PageEntity> treeSet = new TreeSet<>();
-            treeSet.add(pageEntity);
 
+        if (!pageEntity.getPath().isEmpty()) {
             synchronized (siteEntity) {
-                siteEntity.setPage(treeSet);
+                siteEntity.setOnePage(pageEntity);
                 siteEntity.setStatusTime(LocalDateTime.now());
                 siteRepository.save(siteEntity);
             }

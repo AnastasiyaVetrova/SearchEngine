@@ -33,4 +33,7 @@ public class SiteEntity {
 //    @JoinColumn(name = "site_id")
     private Set<PageEntity> page;
 
+    public void setOnePage(PageEntity pageEntity) {
+        page.add(pageEntity);
+    }
 }
