@@ -1,7 +1,6 @@
 package searchengine.parsers;
 
 import lombok.AllArgsConstructor;
-import searchengine.model.EnumStatus;
 import searchengine.model.PageEntity;
 import searchengine.model.SiteEntity;
 import searchengine.repositories.PageRepository;
@@ -18,12 +17,22 @@ import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.RecursiveTask;
 import java.util.stream.Collectors;
 
-@AllArgsConstructor
+
 public class SiteMap extends RecursiveTask<CopyOnWriteArraySet<PageEntity>> {
     private final PageEntity pageEntity;
     private final PageRepository pageRepository;
     private final SiteRepository siteRepository;
     private final SiteEntity siteEntity;
+    private final String regex = "(www.)?";
+    private final String baseUrl;
+
+    public SiteMap(PageEntity pageEntity, PageRepository pageRepository, SiteRepository siteRepository, SiteEntity siteEntity) {
+        this.pageEntity = pageEntity;
+        this.pageRepository = pageRepository;
+        this.siteRepository = siteRepository;
+        this.siteEntity = siteEntity;
+        baseUrl=siteEntity.getUrl().replaceAll(regex, "");
+    }
 
     private static boolean isShutdown = StatisticsServiceImpl.isShutdown();
 //    private static final CopyOnWriteArraySet<PageEntity> WORK_PAGE = new CopyOnWriteArraySet<>();//содержит все ссылки
@@ -46,7 +55,8 @@ public class SiteMap extends RecursiveTask<CopyOnWriteArraySet<PageEntity>> {
             exception.printStackTrace();
         }
         for (PageEntity page : allUrl) {
-            if (pageRepository.existsByPath(page.getPath())) {
+
+            if (findPageToDB(page)) {
                 allUrl.remove(page);
                 continue;
             }
@@ -84,8 +94,8 @@ public class SiteMap extends RecursiveTask<CopyOnWriteArraySet<PageEntity>> {
     }
 
     private void savePageToDB(TreeSet<PageEntity> pageEntities, SiteEntity siteEntity) {
-        String regex = "(www.)?";
-        String baseUrl = siteEntity.getUrl().replaceAll(regex, "");
+//        String regex = "(www.)?";
+//        String baseUrl = siteEntity.getUrl().replaceAll(regex, "");
         Set<PageEntity> listPage = pageEntities.stream().parallel().map(p -> {
                     p.setSite(siteEntity);
                     p.setPath(p.getPath().replaceAll(baseUrl, ""));
@@ -97,5 +107,14 @@ public class SiteMap extends RecursiveTask<CopyOnWriteArraySet<PageEntity>> {
         synchronized (siteEntity) {
             siteRepository.save(siteEntity);
         }
+    }
+
+    private boolean findPageToDB(PageEntity page) {
+        boolean isFindPage;
+        page.getPath().replaceAll(baseUrl, "");
+        synchronized (page) {
+            isFindPage = pageRepository.existsByPath(page.getPath());
+        }
+        return isFindPage;
     }
 }
