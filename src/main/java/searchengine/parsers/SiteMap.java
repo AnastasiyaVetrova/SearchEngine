@@ -63,4 +63,7 @@ public class SiteMap extends RecursiveTask<CopyOnWriteArraySet<PageEntity>> {
         isShutdown = StatisticsServiceImpl.isShutdown();
         return isShutdown;
     }
+    public static void clearWorkPage(){
+        WORK_PAGE.clear();
+    }
 }

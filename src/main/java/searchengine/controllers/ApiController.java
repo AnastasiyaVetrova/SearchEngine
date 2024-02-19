@@ -9,6 +9,7 @@ import searchengine.config.Site;
 import searchengine.config.SitesList;
 import searchengine.dto.statistics.ResponseMessage;
 import searchengine.dto.statistics.StatisticsResponse;
+import searchengine.parsers.SiteMap;
 import searchengine.services.StatisticsService;
 import searchengine.services.StatisticsServiceImpl;
 
@@ -60,6 +61,7 @@ public class ApiController {
             exception.printStackTrace();
         }
         isIndexingEnd = true;
+        SiteMap.clearWorkPage();
         return new ResponseEntity<>(new ResponseMessage(isEnd), HttpStatus.OK);
     }
 
