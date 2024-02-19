@@ -19,7 +19,7 @@ import java.util.concurrent.RecursiveTask;
 import java.util.stream.Collectors;
 
 
-public class SiteMap extends RecursiveAction {
+public class SiteMap extends RecursiveTask<CopyOnWriteArraySet<PageEntity>> {
     private final PageEntity pageEntity;
     private final PageRepository pageRepository;
     private final SiteRepository siteRepository;
@@ -38,10 +38,11 @@ public class SiteMap extends RecursiveAction {
     private static boolean isShutdown = StatisticsServiceImpl.isShutdown();
 
     @Override
-    protected void compute() {
-
+    protected CopyOnWriteArraySet<PageEntity> compute() {
+        CopyOnWriteArraySet<PageEntity> resultUrl = new CopyOnWriteArraySet<>();
         ParseHTML parseHTML = new ParseHTML();//парсинг- pageEntity
         TreeSet<PageEntity> allUrl = parseHTML.getParseUrl(pageEntity, siteEntity);
+        TreeSet<PageEntity> allUrl2 = new TreeSet<>();
         List<SiteMap> siteLink = new ArrayList<>();//лист с заданиями - url
 
         try {
@@ -52,9 +53,10 @@ public class SiteMap extends RecursiveAction {
         for (PageEntity page : allUrl) {
 
             if (findPageToDB(page)) {
-                allUrl.remove(page);
+//                allUrl.remove(page);
                 continue;
             }
+            allUrl2.add(page);
 //            pageRepository.save(page);
 //            WORK_PAGE.add(page);
             SiteMap siteMap = new SiteMap(page, pageRepository, siteRepository, siteEntity);
@@ -67,22 +69,26 @@ public class SiteMap extends RecursiveAction {
             }
         }
 //        resultUrl.add(pageEntity);
-        savePageToDB(allUrl, siteEntity);
+        savePageToDBOne(pageEntity, siteEntity);
         for (SiteMap map : siteLink) {
             if (shutdownTreadTask()) {
                 map.cancel(shutdownTreadTask());
                 throw new CancellationException();
-            }
-//            else {
-//                savePageToDB(map.join(), siteEntity);
+            } else {
+                for (PageEntity page : map.join()) {
+                if (findPageToDB(page)){
+                    continue;
+                }
+                    savePageToDBTwo(map.join(), siteEntity);}
 //                resultUrl.addAll(map.join());
             }
         }
 //        if (WORK_PAGE.size() == 5000) {
 //            WORK_PAGE.clear();
 //        }
-//        return resultUrl;
+        return resultUrl;
 //    }
+    }
 
     public static boolean shutdownTreadTask() {
         isShutdown = StatisticsServiceImpl.isShutdown();
@@ -112,6 +118,41 @@ public class SiteMap extends RecursiveAction {
         }
         return isFindPage;
     }
+
+    private void savePageToDBTwo(CopyOnWriteArraySet<PageEntity> pageEntities, SiteEntity siteEntity) {
+
+        Set<PageEntity> listPage = pageEntities.stream().parallel().map(p -> {
+                    p.setSite(siteEntity);
+                    p.setPath(p.getPath().replaceAll(baseUrl, ""));
+                    return p;
+                }).filter(p -> !(p.getPath().isEmpty()))
+                .collect(Collectors.toSet());
+        synchronized (siteEntity) {
+            siteEntity.setPage(listPage);
+            siteEntity.setStatusTime(LocalDateTime.now());
+            siteRepository.save(siteEntity);
+        }
+    }
+
+    private void savePageToDBOne(PageEntity pageEntity, SiteEntity siteEntity) {
+        pageEntity.setPath(pageEntity.getPath().replaceAll(baseUrl, ""));
+//        Set<PageEntity> listPage = pageEntities.stream().parallel().map(p -> {
+//                    p.setSite(siteEntity);
+//                    p.setPath(p.getPath().replaceAll(baseUrl, ""));
+//                    return p;
+//                }).filter(p -> !(p.getPath().isEmpty()))
+//                .collect(Collectors.toSet());
+        if (!pageEntity.getPath().isEmpty()) {
+            TreeSet<PageEntity> treeSet = new TreeSet<>();
+            treeSet.add(pageEntity);
+
+            synchronized (siteEntity) {
+                siteEntity.setPage(treeSet);
+                siteEntity.setStatusTime(LocalDateTime.now());
+                siteRepository.save(siteEntity);
+            }
+        }
+    }
 }
 //        String regex = "(www.)?";
 //        String baseUrl = siteEntity.getUrl().replaceAll(regex, "");
@@ -121,4 +162,4 @@ public class SiteMap extends RecursiveAction {
 //        this.pageEntity = pageEntity;
 //
 //    }
-//        CopyOnWriteArraySet<PageEntity> resultUrl = new CopyOnWriteArraySet<>();
+//

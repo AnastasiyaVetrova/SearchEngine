@@ -117,8 +117,8 @@ public class StatisticsServiceImpl implements StatisticsService {
 //                    .collect(Collectors.toSet());
 
 //            siteEntity.setPage(listPage);
-            siteEntity.setStatus(EnumStatus.INDEXED);
-            siteEntity.setStatusTime(LocalDateTime.now());
+//            siteEntity.setStatus(EnumStatus.INDEXED);
+//            siteEntity.setStatusTime(LocalDateTime.now());
 //            synchronized (siteEntity) {
 //                siteRepository.save(siteEntity);
 //            }

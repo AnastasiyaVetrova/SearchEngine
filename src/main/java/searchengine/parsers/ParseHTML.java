@@ -29,7 +29,8 @@ public class ParseHTML {
                 String elemUrl = element.absUrl("href");
                 boolean isRegexUrl = elemUrl.contains(baseUrl)
                         && elemUrl.matches("[^#]+") &&
-                        !elemUrl.endsWith("pdf");
+                        !elemUrl.endsWith("pdf")&&
+                        !elemUrl.endsWith("jpg");
                 if (!isRegexUrl) {
                     continue;
                 }
