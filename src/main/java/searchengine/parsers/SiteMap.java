@@ -14,11 +14,12 @@ import java.util.Set;
 import java.util.TreeSet;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.CopyOnWriteArraySet;
+import java.util.concurrent.RecursiveAction;
 import java.util.concurrent.RecursiveTask;
 import java.util.stream.Collectors;
 
 
-public class SiteMap extends RecursiveTask<CopyOnWriteArraySet<PageEntity>> {
+public class SiteMap extends RecursiveAction {
     private final PageEntity pageEntity;
     private final PageRepository pageRepository;
     private final SiteRepository siteRepository;
@@ -31,20 +32,14 @@ public class SiteMap extends RecursiveTask<CopyOnWriteArraySet<PageEntity>> {
         this.pageRepository = pageRepository;
         this.siteRepository = siteRepository;
         this.siteEntity = siteEntity;
-        baseUrl=siteEntity.getUrl().replaceAll(regex, "");
+        baseUrl = siteEntity.getUrl().replaceAll(regex, "");
     }
 
     private static boolean isShutdown = StatisticsServiceImpl.isShutdown();
-//    private static final CopyOnWriteArraySet<PageEntity> WORK_PAGE = new CopyOnWriteArraySet<>();//содержит все ссылки
 
-    //    public SiteMap(PageEntity pageEntity) {
-//        this.pageEntity = pageEntity;
-//
-//    }
     @Override
-    protected CopyOnWriteArraySet<PageEntity> compute() {
+    protected void compute() {
 
-        CopyOnWriteArraySet<PageEntity> resultUrl = new CopyOnWriteArraySet<>();
         ParseHTML parseHTML = new ParseHTML();//парсинг- pageEntity
         TreeSet<PageEntity> allUrl = parseHTML.getParseUrl(pageEntity, siteEntity);
         List<SiteMap> siteLink = new ArrayList<>();//лист с заданиями - url
@@ -71,22 +66,23 @@ public class SiteMap extends RecursiveTask<CopyOnWriteArraySet<PageEntity>> {
                 siteLink.add(siteMap);
             }
         }
-        resultUrl.add(pageEntity);
+//        resultUrl.add(pageEntity);
         savePageToDB(allUrl, siteEntity);
         for (SiteMap map : siteLink) {
             if (shutdownTreadTask()) {
                 map.cancel(shutdownTreadTask());
                 throw new CancellationException();
-            } else {
+            }
+//            else {
 //                savePageToDB(map.join(), siteEntity);
-                resultUrl.addAll(map.join());
+//                resultUrl.addAll(map.join());
             }
         }
 //        if (WORK_PAGE.size() == 5000) {
 //            WORK_PAGE.clear();
 //        }
-        return resultUrl;
-    }
+//        return resultUrl;
+//    }
 
     public static boolean shutdownTreadTask() {
         isShutdown = StatisticsServiceImpl.isShutdown();
@@ -94,27 +90,35 @@ public class SiteMap extends RecursiveTask<CopyOnWriteArraySet<PageEntity>> {
     }
 
     private void savePageToDB(TreeSet<PageEntity> pageEntities, SiteEntity siteEntity) {
-//        String regex = "(www.)?";
-//        String baseUrl = siteEntity.getUrl().replaceAll(regex, "");
+
         Set<PageEntity> listPage = pageEntities.stream().parallel().map(p -> {
                     p.setSite(siteEntity);
                     p.setPath(p.getPath().replaceAll(baseUrl, ""));
                     return p;
                 }).filter(p -> !(p.getPath().isEmpty()))
                 .collect(Collectors.toSet());
-        siteEntity.setPage(listPage);
-        siteEntity.setStatusTime(LocalDateTime.now());
         synchronized (siteEntity) {
+            siteEntity.setPage(listPage);
+            siteEntity.setStatusTime(LocalDateTime.now());
             siteRepository.save(siteEntity);
         }
     }
 
     private boolean findPageToDB(PageEntity page) {
         boolean isFindPage;
-        page.getPath().replaceAll(baseUrl, "");
+        String findUrl = page.getPath().replaceAll(baseUrl, "");
         synchronized (page) {
-            isFindPage = pageRepository.existsByPath(page.getPath());
+            isFindPage = pageRepository.existsByPath(findUrl);
         }
         return isFindPage;
     }
 }
+//        String regex = "(www.)?";
+//        String baseUrl = siteEntity.getUrl().replaceAll(regex, "");
+//    private static final CopyOnWriteArraySet<PageEntity> WORK_PAGE = new CopyOnWriteArraySet<>();//содержит все ссылки
+
+//    public SiteMap(PageEntity pageEntity) {
+//        this.pageEntity = pageEntity;
+//
+//    }
+//        CopyOnWriteArraySet<PageEntity> resultUrl = new CopyOnWriteArraySet<>();

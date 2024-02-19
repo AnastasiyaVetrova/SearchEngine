@@ -104,7 +104,7 @@ public class StatisticsServiceImpl implements StatisticsService {
         page.setPath(baseUrl);
         ForkJoinPool forkJoinPool = new ForkJoinPool();
         try {
-            pageEntities = forkJoinPool.invoke(new SiteMap(page, pageRepository,siteRepository,siteEntity));
+            forkJoinPool.invoke(new SiteMap(page, pageRepository,siteRepository,siteEntity));
 //            PageEntity pageInitialSite = pageEntities.stream().filter(p -> p.equals(page)).findFirst().get();
 //            if (pageInitialSite.getCode() != 200) {
 //                throw new Exception(pageInitialSite.getContent());
