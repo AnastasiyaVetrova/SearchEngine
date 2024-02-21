@@ -103,8 +103,8 @@ public class StatisticsServiceImpl implements StatisticsService {
 //        String baseUrl = site.getUrl().contains(regexUpdateUrl) ?
 //                site.getUrl().replace(regexUpdateUrl, "") : site.getUrl();
         page.setPath(siteEntity.getUrl());
-//        ParseHTML parseHTML=new ParseHTML();
-//        parseHTML.getParseUrl(page,siteEntity);
+        ParseHTML parseHTML=new ParseHTML();
+        parseHTML.getParseUrl(page,siteEntity);
 
         ForkJoinPool forkJoinPool = new ForkJoinPool();
         try {

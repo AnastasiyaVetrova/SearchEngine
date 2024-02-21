@@ -15,30 +15,26 @@ public class ParseHTML {
 
     public TreeSet<PageEntity> getParseUrl(PageEntity page, SiteEntity siteEntity) {
         TreeSet<PageEntity> treeSetUrl = new TreeSet<>();
-        String pageUrl = page.getPath().contains(siteEntity.getUrl()) ? page.getPath() :
-                siteEntity.getUrl().concat(page.getPath());
-//        String pageUrl =siteEntity.getUrl().concat(page.getPath());
-//        String pageUrl = page.getPath();
-        Connection connection = Jsoup.connect(pageUrl);
-
+        String baseUrlRegex = BaseUrlRegex.getBaseUrl(siteEntity)+"[^#\\s]+";
+        Connection connection = Jsoup.connect(page.getPath());
         try {
             Document document = connection.get();
             page.setCode(connection.response().statusCode());
             Elements elements = document.select("a[href]");
 
             for (Element element : elements) {
-                String elemUrl = element.attr("href");
-                boolean isRegexUrl =  elemUrl.startsWith("/")
-                        && elemUrl.matches("[^#]+") &&
-                        !elemUrl.endsWith("pdf")&&
-                        !elemUrl.endsWith("jpg");
-                if (!isRegexUrl) {
+                String elemUrl = element.absUrl("href");
+                boolean isRegexUrl =  !elemUrl.matches(baseUrlRegex);
+//                &&
+//                        elemUrl.contains("sort")&&
+//                        elemUrl.endsWith("pdf")&&
+//                        elemUrl.endsWith("jpg");
+                if (isRegexUrl) {
                     continue;
                 }
                 PageEntity pageEntity = new PageEntity();
                 pageEntity.setPath(elemUrl);
-//                String path = siteEntity.getUrl().concat(elemUrl);
-                Connection connection1 = Jsoup.connect(siteEntity.getUrl().concat(elemUrl));
+                Connection connection1 = Jsoup.connect(elemUrl);
                 pageEntity.setContent(connection1.get().toString());
                 pageEntity.setCode(connection.response().statusCode());
                 pageEntity.setSite(siteEntity);
@@ -62,4 +58,15 @@ public class ParseHTML {
         }
         return treeSetUrl;
     }
+
 }
+////        String pageUrl = page.getPath().contains(siteEntity.getUrl()) ? page.getPath() :
+////                siteEntity.getUrl().concat(page.getPath());
+////        String pageUrl =siteEntity.getUrl().concat(page.getPath());
+////        String pageUrl = page.getPath();
+//        String regex="https?://(www.)?";
+//        String res=siteEntity.getUrl().replaceAll(regex,"");
+//
+////        String baseUrlRegex="https?://(www.)?"+res;
+//        String baseUrlRegex = "https?://(www.)?(?="+res+")[^#+\\s]+";
+//                String path = siteEntity.getUrl().concat(elemUrl);
