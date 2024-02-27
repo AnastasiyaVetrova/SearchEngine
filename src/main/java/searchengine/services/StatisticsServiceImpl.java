@@ -86,7 +86,6 @@ public class StatisticsServiceImpl implements StatisticsService {
 
     public boolean startIndexing(Site site) {
 
-        String regexUpdateUrl = "www.";
         CopyOnWriteArraySet<PageEntity> pageEntities = new CopyOnWriteArraySet<>();
 
         siteRepository.deleteByUrl(site.getUrl());
@@ -100,11 +99,12 @@ public class StatisticsServiceImpl implements StatisticsService {
         }
 
         PageEntity page = new PageEntity();
+        page.setPath(siteEntity.getUrl());
 //        String baseUrl = site.getUrl().contains(regexUpdateUrl) ?
 //                site.getUrl().replace(regexUpdateUrl, "") : site.getUrl();
-        page.setPath(siteEntity.getUrl());
-        ParseHTML parseHTML=new ParseHTML();
-        parseHTML.getParseUrl(page,siteEntity);
+//        page.setPath(siteEntity.getUrl());
+//        ParseHTML parseHTML=new ParseHTML();
+//        parseHTML.getParseUrl(page,siteEntity);
 
         ForkJoinPool forkJoinPool = new ForkJoinPool();
         try {

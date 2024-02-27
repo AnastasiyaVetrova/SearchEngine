@@ -15,25 +15,25 @@ public class ParseHTML {
 
     public TreeSet<PageEntity> getParseUrl(PageEntity page, SiteEntity siteEntity) {
         TreeSet<PageEntity> treeSetUrl = new TreeSet<>();
-        String baseUrlRegex = BaseUrlRegex.getBaseUrl(siteEntity)+"[^#\\s]+";
-        Connection connection = Jsoup.connect(page.getPath());
+        String baseUrlRegex = BaseUrlRegex.getBaseUrl(siteEntity);
+        String urlRegex = baseUrlRegex + "[^#\\s]+";
+        String pageUrl = page.getPath().contains(siteEntity.getUrl()) ? page.getPath() :
+                siteEntity.getUrl().concat(page.getPath());
+        Connection connection = Jsoup.connect(pageUrl);
         try {
             Document document = connection.get();
-            page.setCode(connection.response().statusCode());
+//            page.setCode(connection.response().statusCode());
             Elements elements = document.select("a[href]");
 
             for (Element element : elements) {
                 String elemUrl = element.absUrl("href");
-                boolean isRegexUrl =  !elemUrl.matches(baseUrlRegex);
-//                &&
-//                        elemUrl.contains("sort")&&
-//                        elemUrl.endsWith("pdf")&&
-//                        elemUrl.endsWith("jpg");
-                if (isRegexUrl) {
+                boolean isRegexUrl = elemUrl.matches(urlRegex) && !isFile(elemUrl);
+
+                if (!isRegexUrl) {
                     continue;
                 }
                 PageEntity pageEntity = new PageEntity();
-                pageEntity.setPath(elemUrl);
+                pageEntity.setPath(elemUrl.replaceAll(baseUrlRegex, ""));
                 Connection connection1 = Jsoup.connect(elemUrl);
                 pageEntity.setContent(connection1.get().toString());
                 pageEntity.setCode(connection.response().statusCode());
@@ -59,6 +59,20 @@ public class ParseHTML {
         return treeSetUrl;
     }
 
+    private boolean isFile(String path) {
+        return path.contains(".jpg")
+                || path.contains(".jpeg")
+                || path.contains(".png")
+                || path.contains(".gif")
+                || path.contains(".webp")
+                || path.contains(".pdf")
+                || path.contains(".eps")
+                || path.contains(".xlsx")
+                || path.contains(".doc")
+                || path.contains(".pptx")
+                || path.contains(".docx")
+                || path.contains("?");
+    }
 }
 ////        String pageUrl = page.getPath().contains(siteEntity.getUrl()) ? page.getPath() :
 ////                siteEntity.getUrl().concat(page.getPath());
