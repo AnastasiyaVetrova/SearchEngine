@@ -29,8 +29,8 @@ public class SiteEntity {
     @Column(name = "name", columnDefinition = "VARCHAR(255)", nullable = false)
     private String name;
 
-//    @OneToMany(cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @OneToMany(mappedBy = "site", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
 ////    @JoinColumn(name = "site")
-//    private Set<PageEntity> page;
+    private Set<PageEntity> page;
 
 }

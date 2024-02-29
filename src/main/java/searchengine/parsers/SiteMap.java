@@ -1,12 +1,11 @@
 package searchengine.parsers;
 
+import searchengine.controllers.ApiController;
 import searchengine.model.PageEntity;
 import searchengine.model.SiteEntity;
 import searchengine.repositories.PageRepository;
 import searchengine.repositories.SiteRepository;
-import searchengine.services.StatisticsServiceImpl;
 
-import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.TreeSet;
@@ -18,7 +17,6 @@ public class SiteMap extends RecursiveAction {
     private final PageRepository pageRepository;
     private final SiteRepository siteRepository;
     private final SiteEntity siteEntity;
-    private static boolean isShutdown = StatisticsServiceImpl.isShutdown();
 
     public SiteMap(PageEntity pageEntity, PageRepository pageRepository, SiteRepository siteRepository, SiteEntity siteEntity) {
         this.pageEntity = pageEntity;
@@ -39,50 +37,43 @@ public class SiteMap extends RecursiveAction {
             exception.printStackTrace();
         }
         for (PageEntity page : allUrl) {
-            if (findPageToDB(page)) {
+            if (ApiController.isIndexingEnd()) {
+                throw new CancellationException();
+            }
+            if (findPageToDB(page, siteEntity)) {
                 continue;
             }
             SiteMap siteMap = new SiteMap(page, pageRepository, siteRepository, siteEntity);
-            if (shutdownTreadTask()) {
-                siteMap.cancel(shutdownTreadTask());
-                throw new CancellationException();
-            } else {
-                resultUrl.add(page);
-                siteMap.fork();
-                siteLink.add(siteMap);
-            }
+            resultUrl.add(page);
+            siteMap.fork();
+            siteLink.add(siteMap);
         }
-        savePageToDB(resultUrl, siteEntity);
+        if (!resultUrl.isEmpty()) {
+            savePageToDB(resultUrl, siteEntity);
+        }
         for (SiteMap map : siteLink) {
             map.join();
         }
     }
 
-    public static boolean shutdownTreadTask() {
-        isShutdown = StatisticsServiceImpl.isShutdown();
-        return isShutdown;
+    private boolean findPageToDB(PageEntity page, SiteEntity siteEntity) {
+        return pageRepository.existsByPath(page.getPath(),siteEntity);
     }
-    private boolean findPageToDB(PageEntity page) {
-//        boolean isFindPage = pageRepository.existsByPath(page.getPath());
-        return pageRepository.existsByPath(page.getPath());
-    }
-    private void savePageToDB(TreeSet<PageEntity> pageEntities, SiteEntity siteEntity) {
 
+    private void savePageToDB(TreeSet<PageEntity> pageEntities, SiteEntity siteEntity) {
+        System.out.println("добавление");
         pageRepository.saveAll(pageEntities);
-//                siteEntity.setPage(pageEntities);
-                    synchronized (siteEntity) {
-                        siteEntity.setStatusTime(LocalDateTime.now());
-                    }
-                siteRepository.save(siteEntity);
-//            }
-//        }
+        siteRepository.save(siteEntity);
+        System.out.println("закончил");
     }
+
+}
 
 //        String regex = "(www.)?";
 //        String baseUrl = siteEntity.getUrl().replaceAll(regex, "");
 //    private static final CopyOnWriteArraySet<PageEntity> WORK_PAGE = new CopyOnWriteArraySet<>();//содержит все ссылки
 
-    //    public SiteMap(PageEntity pageEntity) {
+//    public SiteMap(PageEntity pageEntity) {
 //        this.pageEntity = pageEntity;
 //
 //    }
@@ -101,7 +92,7 @@ public class SiteMap extends RecursiveAction {
 //        }
 //    }
 
-}
+//}
 //        savePageToDB(resultUrl, siteEntity);
 //        for (SiteMap map : siteLink) {
 //            if (shutdownTreadTask()) {
@@ -153,3 +144,9 @@ public class SiteMap extends RecursiveAction {
 
 //        synchronized (siteEntity) {
 //            synchronized (pageEntities) {
+//    private static boolean isShutdown = StatisticsServiceImpl.isShutdown();
+
+//    public static boolean shutdownTreadTask() {
+//        isShutdown = StatisticsServiceImpl.isShutdown();
+//        return isShutdown;
+//    }

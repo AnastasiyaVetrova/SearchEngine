@@ -1,5 +1,6 @@
 package searchengine.controllers;
 
+import lombok.Getter;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -10,14 +11,9 @@ import searchengine.config.SitesList;
 import searchengine.dto.statistics.ResponseMessage;
 import searchengine.dto.statistics.StatisticsResponse;
 import searchengine.services.StatisticsService;
-import searchengine.services.StatisticsServiceImpl;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.TreeSet;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
 @RestController
@@ -27,6 +23,7 @@ public class ApiController {
 
     private final StatisticsService statisticsService;
     private ExecutorService executorService;
+    @Getter
     private static boolean isIndexingEnd = true;
 
     public ApiController(StatisticsService statisticsService) {
@@ -69,14 +66,11 @@ public class ApiController {
         if (isIndexingEnd) {
             return new ResponseEntity<>(new ResponseMessage(isClose, "Индексация не запущена"), HttpStatus.OK);
         }
-        StatisticsServiceImpl.isShutdownNow(true);
+        isIndexingEnd=true;
         try {
             isClose = executorService.awaitTermination(1, TimeUnit.MINUTES);
         } catch (Exception exception) {
             executorService.shutdownNow();
-            exception.printStackTrace();
-        } finally {
-            StatisticsServiceImpl.isShutdownNow(false);
         }
         return new ResponseEntity<>(new ResponseMessage(isClose), HttpStatus.OK);
     }

@@ -17,15 +17,14 @@ public class PageEntity implements Comparable<PageEntity> {
     @Column(name = "id", nullable = false)
     private Integer id;
     @ManyToOne(cascade = CascadeType.REMOVE, fetch = FetchType.LAZY)
-    @JoinColumn(name = "site")//, nullable = false)
-
+    @JoinColumn(name = "site", nullable = false)
     private SiteEntity site;
-    @Column(name = "path", columnDefinition = "VARCHAR(255)")//, nullable = false)
+    @Column(name = "path", columnDefinition = "VARCHAR(255)", nullable = false)
     @EqualsAndHashCode.Include
     private String path;
-  @Column(name = "code")//, nullable = false)
+  @Column(name = "code", nullable = false)
     private Integer code;
-    @Column(name = "content", columnDefinition = "MEDIUMTEXT")//, nullable = false)
+    @Column(name = "content", columnDefinition = "MEDIUMTEXT", nullable = false)
     private String content;
 
     @Override
