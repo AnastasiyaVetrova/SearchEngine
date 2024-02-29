@@ -29,7 +29,7 @@ public class SiteEntity {
     @Column(name = "name", columnDefinition = "VARCHAR(255)", nullable = false)
     private String name;
 
-    @OneToMany(mappedBy = "site", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @OneToMany(mappedBy = "site", cascade = CascadeType.REMOVE, fetch = FetchType.LAZY)
 ////    @JoinColumn(name = "site")
     private Set<PageEntity> page;
 

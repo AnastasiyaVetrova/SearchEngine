@@ -23,8 +23,8 @@ indexing-settings:
   sites:
 #    - url: https://www.lenta1256.ru
 #      name: Лента1256
-    - url: https://www.lenta.ru
-      name: Лента.ру
+#    - url: https://www.lenta.ru
+#      name: Лента.ру
 #    - url: https://www.skillbox.ru
 #      name: Skillbox
 #    - url: https://www.playback.ru

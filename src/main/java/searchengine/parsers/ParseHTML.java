@@ -30,6 +30,11 @@ public class ParseHTML {
             if (ApiController.isIndexingEnd()) {
                 throw new CancellationException();
             }
+            try {
+                Thread.sleep(150);
+            } catch (Exception exception) {
+                exception.printStackTrace();
+            }
             String elemUrl = element.absUrl("href");
             boolean isRegexUrl = elemUrl.matches(urlRegex) && !isFile(elemUrl);
             if (!isRegexUrl) {
