@@ -1,69 +1,67 @@
 package searchengine.parsers;
 
+import searchengine.controllers.ApiController;
 import searchengine.model.PageEntity;
-import searchengine.services.StatisticsServiceImpl;
+import searchengine.model.SiteEntity;
+import searchengine.repositories.PageRepository;
+import searchengine.repositories.SiteRepository;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.TreeSet;
 import java.util.concurrent.CancellationException;
-import java.util.concurrent.CopyOnWriteArraySet;
-import java.util.concurrent.RecursiveTask;
+import java.util.concurrent.RecursiveAction;
 
-public class SiteMap extends RecursiveTask<CopyOnWriteArraySet<PageEntity>> {
+public class SiteMap extends RecursiveAction {
     private final PageEntity pageEntity;
-    private static boolean isShutdown = StatisticsServiceImpl.isShutdown();
-    private static final CopyOnWriteArraySet<PageEntity> WORK_PAGE = new CopyOnWriteArraySet<>();//содержит все ссылки
+    private final PageRepository pageRepository;
+    private final SiteRepository siteRepository;
+    private final SiteEntity siteEntity;
 
-    public SiteMap(PageEntity pageEntity) {
+    public SiteMap(PageEntity pageEntity, PageRepository pageRepository, SiteRepository siteRepository, SiteEntity siteEntity) {
         this.pageEntity = pageEntity;
+        this.pageRepository = pageRepository;
+        this.siteRepository = siteRepository;
+        this.siteEntity = siteEntity;
     }
+
     @Override
-    protected CopyOnWriteArraySet<PageEntity> compute() {
-        CopyOnWriteArraySet<PageEntity> resultUrl = new CopyOnWriteArraySet<>();
-        ParseHTML parseHTML = new ParseHTML();//парсинг- pageEntity
-        TreeSet<PageEntity> allUrl = parseHTML.getParseUrl(pageEntity);
-        List<SiteMap> siteLink = new ArrayList<>();//лист с заданиями - url
-        resultUrl.add(pageEntity);
-        try {
-            Thread.sleep(150);
-        } catch (Exception exception) {
-            exception.printStackTrace();
-        }
+    protected void compute() {
+        ParseHTML parseHTML = new ParseHTML();
+        TreeSet<PageEntity> allUrl = parseHTML.getParseUrl(pageEntity, siteEntity);
+        TreeSet<PageEntity> resultUrl = new TreeSet<>();
+        List<SiteMap> siteLink = new ArrayList<>();
+
         for (PageEntity page : allUrl) {
-            if (WORK_PAGE.contains(page)) {
+            if (ApiController.isIndexingEnd()) {
+                throw new CancellationException();
+            }
+            if (findPageToDB(page, siteEntity)) {
                 continue;
             }
-            WORK_PAGE.add(page);
-            SiteMap siteMap = new SiteMap(page);
-            if (shutdownTreadTask()) {
-                siteMap.cancel(shutdownTreadTask());
-                throw new CancellationException();
-            } else {
-                siteMap.fork();
-                siteLink.add(siteMap);
-            }
+            SiteMap siteMap = new SiteMap(page, pageRepository, siteRepository, siteEntity);
+            resultUrl.add(page);
+            siteMap.fork();
+            siteLink.add(siteMap);
         }
-
+        if (!resultUrl.isEmpty()) {
+            savePageToDB(resultUrl, siteEntity);
+        }
         for (SiteMap map : siteLink) {
-            if (shutdownTreadTask()) {
-                map.cancel(shutdownTreadTask());
-                throw new CancellationException();
-            } else {
-                resultUrl.addAll(map.join());
-            }
+            map.join();
         }
-        if (WORK_PAGE.size() == 5000) {
-            WORK_PAGE.clear();
-        }
-        return resultUrl;
     }
 
-    public static boolean shutdownTreadTask() {
-        isShutdown = StatisticsServiceImpl.isShutdown();
-        return isShutdown;
+    private boolean findPageToDB(PageEntity page, SiteEntity siteEntity) {
+        return pageRepository.existsByPath(page.getPath(),siteEntity);
+    }
+
+    private void savePageToDB(TreeSet<PageEntity> pageEntities, SiteEntity siteEntity) {
+        pageRepository.saveAll(pageEntities);
+        siteRepository.save(siteEntity);
     }
     public static void clearWorkPage(){
         WORK_PAGE.clear();
     }
 }
+
