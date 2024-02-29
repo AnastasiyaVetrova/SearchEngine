@@ -93,9 +93,6 @@ public class StatisticsServiceImpl implements StatisticsService {
         PageEntity page = new PageEntity();
         try {
             page.setPath(siteEntity.getUrl());
-//            if (connection.response().statusCode()!=200){
-//                throw new Exception();
-//            }
             page.setContent(connection.get().toString());
             page.setCode(connection.response().statusCode());
 

@@ -30,7 +30,6 @@ public class SiteEntity {
     private String name;
 
     @OneToMany(mappedBy = "site", cascade = CascadeType.REMOVE, fetch = FetchType.LAZY)
-////    @JoinColumn(name = "site")
     private Set<PageEntity> page;
 
 }

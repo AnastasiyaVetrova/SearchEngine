@@ -58,7 +58,6 @@ public class ApiController {
             exception.printStackTrace();
         }
         isIndexingEnd = true;
-        SiteMap.clearWorkPage();
         return new ResponseEntity<>(new ResponseMessage(isEnd), HttpStatus.OK);
     }
 

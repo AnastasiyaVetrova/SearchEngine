@@ -10,6 +10,6 @@ import searchengine.model.SiteEntity;
 @Repository
 public interface PageRepository extends JpaRepository<PageEntity, Integer> {
     @Query("select count(p)>0 FROM PageEntity p where p.path =:path and p.site= :site")
-       boolean existsByPath(@Param("path") String path, @Param("site") SiteEntity site);//TODO
+       boolean existsByPath(@Param("path") String path, @Param("site") SiteEntity site);
 
 }

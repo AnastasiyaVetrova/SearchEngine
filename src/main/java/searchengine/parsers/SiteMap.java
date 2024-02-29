@@ -60,8 +60,5 @@ public class SiteMap extends RecursiveAction {
         pageRepository.saveAll(pageEntities);
         siteRepository.save(siteEntity);
     }
-    public static void clearWorkPage(){
-        WORK_PAGE.clear();
-    }
 }
 
