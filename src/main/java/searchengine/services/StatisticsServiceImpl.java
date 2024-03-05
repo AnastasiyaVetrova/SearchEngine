@@ -15,6 +15,7 @@ import searchengine.dto.statistics.TotalStatistics;
 import searchengine.model.EnumStatus;
 import searchengine.model.PageEntity;
 import searchengine.model.SiteEntity;
+import searchengine.parsers.BaseUrlRegex;
 import searchengine.parsers.SiteMap;
 import searchengine.repositories.PageRepository;
 import searchengine.repositories.SiteRepository;
@@ -144,6 +145,14 @@ public class StatisticsServiceImpl implements StatisticsService {
     @Override
     public SitesList getSites() {
         return sites;
+    }
+
+    @Override
+    public boolean startIndexPage(String url) {
+
+        for (Site site : sites.getSites())
+            if (url.contains(site.getUrl()))
+                return false;
     }
 
 //    public static void isShutdownNow(Boolean isShut) {

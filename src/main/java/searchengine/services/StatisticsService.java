@@ -10,4 +10,5 @@ public interface StatisticsService {
     StatisticsResponse getStatistics();
     boolean startIndexing(Site site);
     SitesList getSites();
+    boolean startIndexPage(String url);
 }

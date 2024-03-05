@@ -3,14 +3,11 @@ package searchengine.controllers;
 import lombok.Getter;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 import searchengine.config.Site;
 import searchengine.config.SitesList;
 import searchengine.dto.statistics.ResponseMessage;
 import searchengine.dto.statistics.StatisticsResponse;
-import searchengine.parsers.SiteMap;
 import searchengine.services.StatisticsService;
 
 import java.util.concurrent.ExecutorService;
@@ -74,5 +71,16 @@ public class ApiController {
             executorService.shutdownNow();
         }
         return new ResponseEntity<>(new ResponseMessage(isClose), HttpStatus.OK);
+    }
+    @PostMapping("/indexPage")
+    public ResponseEntity<ResponseMessage> indexPage(@RequestParam String url){
+        boolean isIndexPage = statisticsService.startIndexPage(url);
+        if (!isIndexPage){
+            return new ResponseEntity<>(new ResponseMessage(isIndexPage,
+                    "Данная страница находится за пределами сайтов, указанных в конфигурационном файле"
+            ), HttpStatus.OK);
+        }
+
+        return new ResponseEntity<>(new ResponseMessage(isIndexPage), HttpStatus.OK);
     }
 }

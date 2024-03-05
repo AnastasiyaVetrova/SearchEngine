@@ -1,5 +1,6 @@
 package searchengine.parsers;
 
+import org.springframework.transaction.annotation.Transactional;
 import searchengine.controllers.ApiController;
 import searchengine.model.PageEntity;
 import searchengine.model.SiteEntity;
@@ -55,7 +56,7 @@ public class SiteMap extends RecursiveAction {
     private boolean findPageToDB(PageEntity page, SiteEntity siteEntity) {
         return pageRepository.existsByPath(page.getPath(),siteEntity);
     }
-
+@Transactional
     private void savePageToDB(TreeSet<PageEntity> pageEntities, SiteEntity siteEntity) {
         pageRepository.saveAll(pageEntities);
         siteRepository.save(siteEntity);
