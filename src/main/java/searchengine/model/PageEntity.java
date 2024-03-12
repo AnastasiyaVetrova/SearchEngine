@@ -26,8 +26,8 @@ public class PageEntity implements Comparable<PageEntity> {
     private Integer code;
     @Column(name = "content", columnDefinition = "MEDIUMTEXT", nullable = false)
     private String content;
-//    @OneToMany(cascade = CascadeType.REMOVE, mappedBy = "pageId", fetch = FetchType.LAZY)
-//    private List<IndexEntity> indexEntity;
+    @OneToMany(cascade = CascadeType.REMOVE, mappedBy = "page", fetch = FetchType.LAZY)
+    private List<IndexEntity> indexEntity;
 
     @Override
     public int compareTo(PageEntity o) {

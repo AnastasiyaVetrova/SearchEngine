@@ -8,15 +8,16 @@ import org.springframework.stereotype.Service;
 
 import searchengine.config.Site;
 import searchengine.config.SitesList;
-import searchengine.dto.statistics.DetailedStatisticsItem;
-import searchengine.dto.statistics.StatisticsData;
-import searchengine.dto.statistics.StatisticsResponse;
-import searchengine.dto.statistics.TotalStatistics;
+import searchengine.dto.statistics.*;
+import searchengine.lemmas.SaveLemmaAndIndex;
+import searchengine.lemmas.FindLemma;
 import searchengine.model.EnumStatus;
 import searchengine.model.PageEntity;
 import searchengine.model.SiteEntity;
 import searchengine.parsers.BaseUrlRegex;
 import searchengine.parsers.SiteMap;
+import searchengine.repositories.IndexRepository;
+import searchengine.repositories.LemmaRepository;
 import searchengine.repositories.PageRepository;
 import searchengine.repositories.SiteRepository;
 
@@ -33,6 +34,8 @@ public class StatisticsServiceImpl implements StatisticsService {
     private final SitesList sites;//создаем список сайтов
     private final PageRepository pageRepository;
     private final SiteRepository siteRepository;
+    private final LemmaRepository lemmaRepository;
+    private final IndexRepository indexRepository;
 
     @Override
     public StatisticsResponse getStatistics() {
@@ -83,11 +86,7 @@ public class StatisticsServiceImpl implements StatisticsService {
     public boolean startIndexing(Site site) {
 
         siteRepository.deleteByUrl(site.getUrl());
-        SiteEntity siteEntity = new SiteEntity();
-        siteEntity.setName(site.getName());
-        siteEntity.setUrl(site.getUrl());
-        siteEntity.setStatus(EnumStatus.INDEXING);
-        siteEntity.setStatusTime(LocalDateTime.now());
+        SiteEntity siteEntity = createSite(site);
         siteRepository.save(siteEntity);
 
         Connection connection = Jsoup.connect(siteEntity.getUrl());
@@ -104,12 +103,13 @@ public class StatisticsServiceImpl implements StatisticsService {
             siteEntity.setStatusTime(LocalDateTime.now());
             siteEntity.setStatus(EnumStatus.FAILED);
             siteRepository.save(siteEntity);
-            System.out.println("Ошибка индексации: сайт не доступен: ");
             return true;
         }
         ForkJoinPool forkJoinPool = new ForkJoinPool();
+//        SaveLemmaAndIndex saveLemmaAndIndex = new SaveLemmaAndIndex(lemmaRepository, indexRepository);
         try {
-            forkJoinPool.invoke(new SiteMap(page, pageRepository, siteRepository, siteEntity));
+            forkJoinPool.invoke(new SiteMap(page, pageRepository, siteRepository, siteEntity,
+                    lemmaRepository,indexRepository));
             siteEntity.setStatus(EnumStatus.INDEXED);
             siteEntity.setStatusTime(LocalDateTime.now());
             siteRepository.save(siteEntity);
@@ -125,9 +125,55 @@ public class StatisticsServiceImpl implements StatisticsService {
             siteEntity.setStatusTime(LocalDateTime.now());
             siteEntity.setStatus(EnumStatus.FAILED);
             siteRepository.save(siteEntity);
+            exception.printStackTrace();
         }
         return true;
     }
+
+    @Override
+    public SitesList getSites() {
+        return sites;
+    }
+
+    @Override
+    public boolean startIndexPage(String url) {
+        String regex = BaseUrlRegex.getRegex() + "[^/]+";
+        String urlPage = url.replaceAll(regex, "");
+        String urlSite = url.replaceAll(urlPage, "");
+        boolean isSite = sites.getSites().stream().map(Site::getUrl).anyMatch(s -> s.contains(urlSite));
+        if (!isSite) {
+            return false;
+        }
+        SiteEntity siteEntity;
+        if (siteRepository.existsByUrl(urlSite)) {
+            siteEntity = siteRepository.findByUrl(urlSite);
+        } else {
+            Site site = sites.getSites().stream().filter(s -> s.getUrl().contains(urlSite)).findFirst().get();
+            siteEntity = createSite(site);
+            siteRepository.save(siteEntity);
+        }
+        pageRepository.deleteByPathAndSite(urlPage, siteEntity);
+        PageEntity pageEntity = new PageEntity();
+        pageEntity.setPath(urlPage);
+        pageEntity.setSite(siteEntity);
+        Connection connection = Jsoup.connect(url);
+
+
+
+//        PageEntity pageEntity = pageRepository.findByPathAndSite(urlPage, siteEntity);
+
+        return true;
+    }
+
+    public SiteEntity createSite(Site site) {
+        SiteEntity siteEntity = new SiteEntity();
+        siteEntity.setName(site.getName());
+        siteEntity.setUrl(site.getUrl());
+        siteEntity.setStatus(EnumStatus.INDEXING);
+        siteEntity.setStatusTime(LocalDateTime.now());
+        return siteEntity;
+    }
+
 
     public SiteEntity mapToEntity(DetailedStatisticsItem item) {
 
@@ -141,24 +187,13 @@ public class StatisticsServiceImpl implements StatisticsService {
         siteEntity.setStatus(EnumStatus.INDEXING);
         return siteEntity;
     }
+}
 
-    @Override
-    public SitesList getSites() {
-        return sites;
-    }
-
-    @Override
-    public boolean startIndexPage(String url) {
-
-        for (Site site : sites.getSites())
-            if (url.contains(site.getUrl()))
-                return false;
-    }
 
 //    public static void isShutdownNow(Boolean isShut) {
 //        isShutdown = isShut;
 //    }
-}
+//}
 //        String baseUrl = site.getUrl().contains(regexUpdateUrl) ?
 //                site.getUrl().replace(regexUpdateUrl, "") : site.getUrl();
 //        page.setPath(siteEntity.getUrl());

@@ -15,10 +15,10 @@ public class IndexEntity {
         private Integer id;
         @ManyToOne(fetch = FetchType.LAZY)
         @JoinColumn(name = "page_id", nullable = false)
-        private PageEntity pageId;
+        private PageEntity page;
         @ManyToOne(fetch = FetchType.LAZY)
         @JoinColumn(name = "lemma_id", nullable = false)
-        private LemmaEntity lemmaId;
+        private LemmaEntity lemma;
         @Column(name = "lemma_rank", nullable = false)
         private float lemmaRank;//количество данной леммы для данной страницы
 }

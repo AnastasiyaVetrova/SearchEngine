@@ -1,9 +1,13 @@
 package searchengine.parsers;
 
+import lombok.AllArgsConstructor;
 import org.springframework.transaction.annotation.Transactional;
 import searchengine.controllers.ApiController;
+import searchengine.lemmas.SaveLemmaAndIndex;
 import searchengine.model.PageEntity;
 import searchengine.model.SiteEntity;
+import searchengine.repositories.IndexRepository;
+import searchengine.repositories.LemmaRepository;
 import searchengine.repositories.PageRepository;
 import searchengine.repositories.SiteRepository;
 
@@ -13,18 +17,14 @@ import java.util.TreeSet;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.RecursiveAction;
 
+@AllArgsConstructor
 public class SiteMap extends RecursiveAction {
     private final PageEntity pageEntity;
     private final PageRepository pageRepository;
     private final SiteRepository siteRepository;
     private final SiteEntity siteEntity;
-
-    public SiteMap(PageEntity pageEntity, PageRepository pageRepository, SiteRepository siteRepository, SiteEntity siteEntity) {
-        this.pageEntity = pageEntity;
-        this.pageRepository = pageRepository;
-        this.siteRepository = siteRepository;
-        this.siteEntity = siteEntity;
-    }
+    private final LemmaRepository lemmaRepository;
+    private final IndexRepository indexRepository;
 
     @Override
     protected void compute() {
@@ -40,7 +40,8 @@ public class SiteMap extends RecursiveAction {
             if (findPageToDB(page, siteEntity)) {
                 continue;
             }
-            SiteMap siteMap = new SiteMap(page, pageRepository, siteRepository, siteEntity);
+            SiteMap siteMap = new SiteMap(page, pageRepository, siteRepository, siteEntity,
+                    lemmaRepository, indexRepository);
             resultUrl.add(page);
             siteMap.fork();
             siteLink.add(siteMap);
@@ -54,11 +55,14 @@ public class SiteMap extends RecursiveAction {
     }
 
     private boolean findPageToDB(PageEntity page, SiteEntity siteEntity) {
-        return pageRepository.existsByPath(page.getPath(),siteEntity);
+        return pageRepository.existsByPath(page.getPath(), siteEntity);
     }
-@Transactional
+
+    //    @Transactional
     private void savePageToDB(TreeSet<PageEntity> pageEntities, SiteEntity siteEntity) {
         pageRepository.saveAll(pageEntities);
+        SaveLemmaAndIndex saveLemmaAndIndex = new SaveLemmaAndIndex(lemmaRepository, indexRepository);
+        pageEntities.forEach(saveLemmaAndIndex::saveLemma);
         siteRepository.save(siteEntity);
     }
 }
