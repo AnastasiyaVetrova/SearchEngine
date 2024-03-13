@@ -12,12 +12,11 @@ public class LemmaEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "id", nullable = false)
     private Integer id;
-    @ManyToOne(cascade = CascadeType.REMOVE, fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "site", nullable = false)
     private SiteEntity site;
     @Column(name = "lemma", columnDefinition = "VARCHAR(255)", nullable = false)
     private String lemma;
-    @Version
     @Column(name = "frequency", nullable = false)//количество страниц, на которых слово встречается хотя бы один раз.
     private int frequency;
     @OneToMany(mappedBy = "lemma", cascade = CascadeType.REMOVE, fetch = FetchType.LAZY)

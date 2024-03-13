@@ -74,13 +74,14 @@ public class ApiController {
     }
     @PostMapping("/indexPage")
     public ResponseEntity<ResponseMessage> indexPage(@RequestParam String url){
+        isIndexingEnd = false;
         boolean isIndexPage = statisticsService.startIndexPage(url);
         if (!isIndexPage){
             return new ResponseEntity<>(new ResponseMessage(isIndexPage,
                     "Данная страница находится за пределами сайтов, указанных в конфигурационном файле"
             ), HttpStatus.OK);
         }
-
+        isIndexingEnd = true;
         return new ResponseEntity<>(new ResponseMessage(isIndexPage), HttpStatus.OK);
     }
 }

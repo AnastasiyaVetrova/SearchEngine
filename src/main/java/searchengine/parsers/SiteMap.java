@@ -6,8 +6,6 @@ import searchengine.controllers.ApiController;
 import searchengine.lemmas.SaveLemmaAndIndex;
 import searchengine.model.PageEntity;
 import searchengine.model.SiteEntity;
-import searchengine.repositories.IndexRepository;
-import searchengine.repositories.LemmaRepository;
 import searchengine.repositories.PageRepository;
 import searchengine.repositories.SiteRepository;
 
@@ -23,8 +21,8 @@ public class SiteMap extends RecursiveAction {
     private final PageRepository pageRepository;
     private final SiteRepository siteRepository;
     private final SiteEntity siteEntity;
-    private final LemmaRepository lemmaRepository;
-    private final IndexRepository indexRepository;
+    private final SaveLemmaAndIndex saveLemmaAndIndex;
+
 
     @Override
     protected void compute() {
@@ -41,7 +39,7 @@ public class SiteMap extends RecursiveAction {
                 continue;
             }
             SiteMap siteMap = new SiteMap(page, pageRepository, siteRepository, siteEntity,
-                    lemmaRepository, indexRepository);
+                    saveLemmaAndIndex);
             resultUrl.add(page);
             siteMap.fork();
             siteLink.add(siteMap);
@@ -49,6 +47,7 @@ public class SiteMap extends RecursiveAction {
         if (!resultUrl.isEmpty()) {
             savePageToDB(resultUrl, siteEntity);
         }
+        resultUrl.forEach(saveLemmaAndIndex::saveLemma);
         for (SiteMap map : siteLink) {
             map.join();
         }
@@ -58,11 +57,9 @@ public class SiteMap extends RecursiveAction {
         return pageRepository.existsByPath(page.getPath(), siteEntity);
     }
 
-    //    @Transactional
-    private void savePageToDB(TreeSet<PageEntity> pageEntities, SiteEntity siteEntity) {
+    @Transactional
+    private void savePageToDB (TreeSet<PageEntity> pageEntities, SiteEntity siteEntity) {
         pageRepository.saveAll(pageEntities);
-        SaveLemmaAndIndex saveLemmaAndIndex = new SaveLemmaAndIndex(lemmaRepository, indexRepository);
-        pageEntities.forEach(saveLemmaAndIndex::saveLemma);
         siteRepository.save(siteEntity);
     }
 }

@@ -12,6 +12,7 @@ import searchengine.dto.statistics.*;
 import searchengine.lemmas.SaveLemmaAndIndex;
 import searchengine.lemmas.FindLemma;
 import searchengine.model.EnumStatus;
+import searchengine.model.IndexEntity;
 import searchengine.model.PageEntity;
 import searchengine.model.SiteEntity;
 import searchengine.parsers.BaseUrlRegex;
@@ -106,10 +107,10 @@ public class StatisticsServiceImpl implements StatisticsService {
             return true;
         }
         ForkJoinPool forkJoinPool = new ForkJoinPool();
-//        SaveLemmaAndIndex saveLemmaAndIndex = new SaveLemmaAndIndex(lemmaRepository, indexRepository);
+        SaveLemmaAndIndex saveLemmaAndIndex = new SaveLemmaAndIndex(lemmaRepository, indexRepository);
         try {
             forkJoinPool.invoke(new SiteMap(page, pageRepository, siteRepository, siteEntity,
-                    lemmaRepository,indexRepository));
+                    saveLemmaAndIndex));
             siteEntity.setStatus(EnumStatus.INDEXED);
             siteEntity.setStatusTime(LocalDateTime.now());
             siteRepository.save(siteEntity);
@@ -147,21 +148,44 @@ public class StatisticsServiceImpl implements StatisticsService {
         SiteEntity siteEntity;
         if (siteRepository.existsByUrl(urlSite)) {
             siteEntity = siteRepository.findByUrl(urlSite);
+            siteEntity.setStatus(EnumStatus.INDEXING);
+            siteRepository.save(siteEntity);
         } else {
             Site site = sites.getSites().stream().filter(s -> s.getUrl().contains(urlSite)).findFirst().get();
             siteEntity = createSite(site);
             siteRepository.save(siteEntity);
         }
-        pageRepository.deleteByPathAndSite(urlPage, siteEntity);
+
+        if (pageRepository.existsByPath(urlPage, siteEntity)) {
+            PageEntity page = pageRepository.findByPathAndSite(urlPage, siteEntity);
+            page.getIndexEntity().stream()
+                    .map(IndexEntity::getLemma)
+                    .peek(l -> l.setFrequency(l.getFrequency() - 1))
+                    .forEach(l->lemmaRepository.updateLemma(l.getId(), l.getFrequency()));
+//                    .filter(l -> l.getFrequency() == 0)
+//                    .forEach(l -> lemmaRepository.deleteById(l.getId()));
+            pageRepository.deleteById(page.getId());
+        }
         PageEntity pageEntity = new PageEntity();
         pageEntity.setPath(urlPage);
         pageEntity.setSite(siteEntity);
         Connection connection = Jsoup.connect(url);
+        try {
+            pageEntity.setContent(connection.get().toString());
+        } catch (
+                Exception e) {
+            pageEntity.setContent(e.toString());
+        } finally {
+            pageEntity.setCode(connection.response().statusCode());
+            pageRepository.save(pageEntity);
 
-
-
-//        PageEntity pageEntity = pageRepository.findByPathAndSite(urlPage, siteEntity);
-
+            if (pageEntity.getCode() == 200) {
+                SaveLemmaAndIndex saveLemmaAndIndex = new SaveLemmaAndIndex(lemmaRepository, indexRepository);
+                saveLemmaAndIndex.saveLemma(pageEntity);
+            }
+        }
+        siteEntity.setStatus(EnumStatus.INDEXED);
+        siteRepository.save(siteEntity);
         return true;
     }
 

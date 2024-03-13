@@ -23,9 +23,12 @@ public class SaveLemmaAndIndex {
 
     public void saveLemma(PageEntity pageEntity) {
 
-            FindLemma findLemma = new FindLemma(pageEntity);
-            HashMap<String, Float> wordPage = findLemma.receivedLemmas();
-
+        FindLemma findLemma = new FindLemma(pageEntity);
+        HashMap<String, Float> wordPage = findLemma.receivedLemmas();
+//        try {
+            if (wordPage.isEmpty()) {
+                return;
+            }
             for (String lemma : wordPage.keySet()) {
                 if (ApiController.isIndexingEnd()) {
                     throw new CancellationException();
@@ -38,16 +41,21 @@ public class SaveLemmaAndIndex {
                 }
                 createIndex(lemmaEntity, pageEntity, wordPage.get(lemma));
             }
+//        } catch (Exception e) {//TODO
+//            System.out.println("Save lemma ошибка");
+//            e.printStackTrace();
+//        }
     }
 
-//    @Transactional
+    @Transactional
     private LemmaEntity updateLemma(String lemma, PageEntity pageEntity) {
         LemmaEntity lemmaFindDB = lemmaRepository.findByLemmaAndSite(lemma, pageEntity.getSite());
         lemmaFindDB.setFrequency(lemmaFindDB.getFrequency() + 1);
         lemmaRepository.updateLemma(lemmaFindDB.getId(), lemmaFindDB.getFrequency());
         return lemmaFindDB;
     }
-//    @Transactional
+
+    @Transactional
     private LemmaEntity createLemma(String lemma, PageEntity pageEntity) {
         LemmaEntity lemmaEntity = new LemmaEntity();
         lemmaEntity.setLemma(lemma);
@@ -57,7 +65,7 @@ public class SaveLemmaAndIndex {
         return lemmaEntity;
     }
 
-//    @Transactional
+    @Transactional
     private void createIndex(LemmaEntity lemmaEntity, PageEntity pageEntity, Float lemmaRank) {
         IndexEntity indexEntity = new IndexEntity();
         indexEntity.setLemma(lemmaEntity);

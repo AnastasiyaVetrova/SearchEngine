@@ -19,7 +19,7 @@ public class FindLemma {
         this.pageEntity = pageEntity;
         try {
             this.luceneMorph = new RussianLuceneMorphology();
-        }catch (Exception e){
+        } catch (Exception e) {
             e.printStackTrace();
         }
     }
@@ -28,21 +28,32 @@ public class FindLemma {
         String regex = "[^А-яЁё]+";
         HashMap<String, Float> lemmas = new HashMap<>();
         String[] words = Jsoup.parse(pageEntity.getContent()).text().toLowerCase().split(regex);
-        for (String word : words) {
-            if (hasPartsSpeech(word)) {
-                continue;
+
+//        try {
+            for (String word : words) {
+                if (word.isEmpty()){
+                    continue;
+                }
+                if (hasPartsSpeech(word)) {
+                    continue;
+                }
+                List<String> baseForms = luceneMorph.getNormalForms(word);
+                if (baseForms.isEmpty()) {
+                    continue;
+                }
+                String baseWord = baseForms.get(0);
+                if (lemmas.containsKey(baseWord)) {
+                    lemmas.put(baseWord, lemmas.get(baseWord) + 1f);
+                } else {
+                    lemmas.put(baseWord, 1f);
+                }
             }
-            List<String> baseForms = luceneMorph.getNormalForms(word);
-            if (baseForms.isEmpty()) {
-                continue;
-            }
-            String baseWord = baseForms.get(0);
-            if (lemmas.containsKey(baseWord)) {
-                lemmas.put(baseWord, lemmas.get(baseWord) + 1);
-            } else {
-                lemmas.put(baseWord, 1f);
-            }
-        }
+//        }catch (Exception e){//TODO
+//            System.out.println("find lemma ошибка");
+//            e.printStackTrace();
+//
+//        }
+        System.out.println(lemmas.size());
         return lemmas;
     }
 

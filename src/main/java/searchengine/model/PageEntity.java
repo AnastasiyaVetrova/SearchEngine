@@ -16,7 +16,7 @@ public class PageEntity implements Comparable<PageEntity> {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "id", nullable = false)
     private Integer id;
-    @ManyToOne(cascade = CascadeType.REMOVE, fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "site", nullable = false)
     private SiteEntity site;
     @Column(name = "path", columnDefinition = "VARCHAR(255)", nullable = false)
