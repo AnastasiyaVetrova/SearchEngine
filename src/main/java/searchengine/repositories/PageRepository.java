@@ -15,7 +15,7 @@ public interface PageRepository extends JpaRepository<PageEntity, Integer> {
 
     @Transactional
     void deleteByPathAndSite(String path, SiteEntity site);
-
     PageEntity findByPathAndSite(String path, SiteEntity site);
+    int countBySite(SiteEntity site);
 
 }

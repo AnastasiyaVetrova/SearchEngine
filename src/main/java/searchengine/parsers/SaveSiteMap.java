@@ -3,7 +3,6 @@ package searchengine.parsers;
 import lombok.AllArgsConstructor;
 import org.springframework.transaction.annotation.Transactional;
 import searchengine.controllers.ApiController;
-import searchengine.lemmas.SaveLemmaAndIndex;
 import searchengine.model.PageEntity;
 import searchengine.model.SiteEntity;
 import searchengine.repositories.PageRepository;
@@ -16,7 +15,7 @@ import java.util.concurrent.CancellationException;
 import java.util.concurrent.RecursiveAction;
 
 @AllArgsConstructor
-public class SiteMap extends RecursiveAction {
+public class SaveSiteMap extends RecursiveAction {
     private final PageEntity pageEntity;
     private final PageRepository pageRepository;
     private final SiteRepository siteRepository;
@@ -29,7 +28,7 @@ public class SiteMap extends RecursiveAction {
         ParseHTML parseHTML = new ParseHTML();
         TreeSet<PageEntity> allUrl = parseHTML.getParseUrl(pageEntity, siteEntity);
         TreeSet<PageEntity> resultUrl = new TreeSet<>();
-        List<SiteMap> siteLink = new ArrayList<>();
+        List<SaveSiteMap> siteLink = new ArrayList<>();
 
         for (PageEntity page : allUrl) {
             if (ApiController.isIndexingEnd()) {
@@ -38,17 +37,17 @@ public class SiteMap extends RecursiveAction {
             if (findPageToDB(page, siteEntity)) {
                 continue;
             }
-            SiteMap siteMap = new SiteMap(page, pageRepository, siteRepository, siteEntity,
+            SaveSiteMap saveSiteMap = new SaveSiteMap(page, pageRepository, siteRepository, siteEntity,
                     saveLemmaAndIndex);
             resultUrl.add(page);
-            siteMap.fork();
-            siteLink.add(siteMap);
+            saveSiteMap.fork();
+            siteLink.add(saveSiteMap);
         }
         if (!resultUrl.isEmpty()) {
             savePageToDB(resultUrl, siteEntity);
         }
         resultUrl.forEach(saveLemmaAndIndex::saveLemma);
-        for (SiteMap map : siteLink) {
+        for (SaveSiteMap map : siteLink) {
             map.join();
         }
     }

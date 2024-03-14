@@ -1,12 +1,15 @@
-package searchengine.lemmas;
+package searchengine.parsers;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
+import org.jsoup.Jsoup;
 import org.springframework.transaction.annotation.Transactional;
 import searchengine.controllers.ApiController;
+import searchengine.lemmas.FindLemma;
 import searchengine.model.IndexEntity;
 import searchengine.model.LemmaEntity;
 import searchengine.model.PageEntity;
+import searchengine.regex.BaseRegex;
 import searchengine.repositories.IndexRepository;
 import searchengine.repositories.LemmaRepository;
 
@@ -23,28 +26,24 @@ public class SaveLemmaAndIndex {
 
     public void saveLemma(PageEntity pageEntity) {
 
-        FindLemma findLemma = new FindLemma(pageEntity);
-        HashMap<String, Float> wordPage = findLemma.receivedLemmas();
-//        try {
-            if (wordPage.isEmpty()) {
-                return;
+        FindLemma findLemma = new FindLemma();
+        HashMap<String, Float> wordPage = findLemma.receivedLemmas(listWordsFromPage(pageEntity));
+
+        if (wordPage.isEmpty()) {
+            return;
+        }
+        for (String lemma : wordPage.keySet()) {
+            if (ApiController.isIndexingEnd()) {
+                throw new CancellationException();
             }
-            for (String lemma : wordPage.keySet()) {
-                if (ApiController.isIndexingEnd()) {
-                    throw new CancellationException();
-                }
-                LemmaEntity lemmaEntity;
-                if (lemmaRepository.existsByLemmaAndSite(lemma, pageEntity.getSite())) {
-                    lemmaEntity = updateLemma(lemma, pageEntity);
-                } else {
-                    lemmaEntity = createLemma(lemma, pageEntity);
-                }
-                createIndex(lemmaEntity, pageEntity, wordPage.get(lemma));
+            LemmaEntity lemmaEntity;
+            if (lemmaRepository.existsByLemmaAndSite(lemma, pageEntity.getSite())) {
+                lemmaEntity = updateLemma(lemma, pageEntity);
+            } else {
+                lemmaEntity = createLemma(lemma, pageEntity);
             }
-//        } catch (Exception e) {//TODO
-//            System.out.println("Save lemma ошибка");
-//            e.printStackTrace();
-//        }
+            createIndex(lemmaEntity, pageEntity, wordPage.get(lemma));
+        }
     }
 
     @Transactional
@@ -72,5 +71,9 @@ public class SaveLemmaAndIndex {
         indexEntity.setPage(pageEntity);
         indexEntity.setLemmaRank(lemmaRank);
         indexRepository.save(indexEntity);
+    }
+
+    private String[] listWordsFromPage(PageEntity pageEntity) {
+        return Jsoup.parse(pageEntity.getContent()).text().toLowerCase().split(BaseRegex.getREGEX_WORD());
     }
 }

@@ -64,7 +64,7 @@ public class ApiController {
         if (isIndexingEnd) {
             return new ResponseEntity<>(new ResponseMessage(isClose, "Индексация не запущена"), HttpStatus.OK);
         }
-        isIndexingEnd=true;
+        isIndexingEnd = true;
         try {
             isClose = executorService.awaitTermination(1, TimeUnit.MINUTES);
         } catch (Exception exception) {
@@ -72,16 +72,24 @@ public class ApiController {
         }
         return new ResponseEntity<>(new ResponseMessage(isClose), HttpStatus.OK);
     }
+
     @PostMapping("/indexPage")
-    public ResponseEntity<ResponseMessage> indexPage(@RequestParam String url){
+    public ResponseEntity<ResponseMessage> indexPage(@RequestParam String url) {
         isIndexingEnd = false;
         boolean isIndexPage = statisticsService.startIndexPage(url);
-        if (!isIndexPage){
+        if (!isIndexPage) {
             return new ResponseEntity<>(new ResponseMessage(isIndexPage,
                     "Данная страница находится за пределами сайтов, указанных в конфигурационном файле"
             ), HttpStatus.OK);
         }
         isIndexingEnd = true;
         return new ResponseEntity<>(new ResponseMessage(isIndexPage), HttpStatus.OK);
+    }
+
+    @GetMapping("/search")
+    public ResponseEntity<ResponseMessage> search(@RequestParam String query) {
+        statisticsService.startSearch(query);
+
+        return new ResponseEntity<>(new ResponseMessage(true), HttpStatus.OK);
     }
 }

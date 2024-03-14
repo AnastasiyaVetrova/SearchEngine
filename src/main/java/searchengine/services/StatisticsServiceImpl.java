@@ -8,21 +8,20 @@ import org.springframework.stereotype.Service;
 
 import searchengine.config.Site;
 import searchengine.config.SitesList;
+import searchengine.dto.search.SiteSearch;
 import searchengine.dto.statistics.*;
-import searchengine.lemmas.SaveLemmaAndIndex;
 import searchengine.lemmas.FindLemma;
-import searchengine.model.EnumStatus;
-import searchengine.model.IndexEntity;
-import searchengine.model.PageEntity;
-import searchengine.model.SiteEntity;
-import searchengine.parsers.BaseUrlRegex;
-import searchengine.parsers.SiteMap;
+import searchengine.model.*;
+import searchengine.parsers.SaveLemmaAndIndex;
+import searchengine.regex.BaseRegex;
+import searchengine.parsers.SaveSiteMap;
 import searchengine.repositories.IndexRepository;
 import searchengine.repositories.LemmaRepository;
 import searchengine.repositories.PageRepository;
 import searchengine.repositories.SiteRepository;
 
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.*;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.ForkJoinPool;
@@ -58,20 +57,20 @@ public class StatisticsServiceImpl implements StatisticsService {
             DetailedStatisticsItem item = new DetailedStatisticsItem();//детали сайта
             item.setName(site.getName());//имя сайт-детали
             item.setUrl(site.getUrl());//адрес сайт-детали
-            int pages = random.nextInt(1_000);//случайное количество страниц//TODO
-            int lemmas = pages * random.nextInt(1_000);//случайное количество лемм//TODO
+            SiteEntity siteEntity = siteRepository.findByUrl(site.getUrl());
+            int pages = pageRepository.countBySite(siteEntity);
+            int lemmas = lemmaRepository.countBySite(siteEntity);
             item.setPages(pages);//страницы-детали
             item.setLemmas(lemmas);//леммы-детали
-            item.setStatus(statuses[i % 3]);//случайный статус//TODO
-            item.setError(errors[i % 3]);//случайная ошибка//TODO
-            item.setStatusTime(System.currentTimeMillis() -
-                    (random.nextInt(10_000)));//текущее время
+            item.setStatus(siteEntity.getStatus().toString());
+            item.setError(siteEntity.getError());
+            item.setStatusTime(siteEntity.getStatusTime()
+                    .atZone(ZoneId.systemDefault())
+                    .toInstant().toEpochMilli());
             total.setPages(total.getPages() + pages);//в общую статистику добавляем количество найденных страниц
             total.setLemmas(total.getLemmas() + lemmas);//в общую статистику добавляем количество найденных страниц-тотал заполнено
             detailed.add(item);//получаем список сайтов из app с детальным описанием
 
-            siteRepository.deleteByUrl(item.getUrl());
-            siteRepository.save(mapToEntity(item));
         }
 
         StatisticsResponse response = new StatisticsResponse();//класс возврата списка сайтов с деталями
@@ -80,7 +79,6 @@ public class StatisticsServiceImpl implements StatisticsService {
         data.setDetailed(detailed);//сайты детально вложены в data
         response.setStatistics(data);//data вложена в response
         response.setResult(true);//результат установлен true
-
         return response;
     }
 
@@ -95,11 +93,13 @@ public class StatisticsServiceImpl implements StatisticsService {
         try {
             page.setPath(siteEntity.getUrl());
             page.setContent(connection.get().toString());
-            page.setCode(connection.response().statusCode());
+            int code = connection.response().statusCode();
+            if (code != 200) {
+                throw new Exception();
+            }
+            page.setCode(code);
 
-//            ParseHTML parseHTML = new ParseHTML();
-//            parseHTML.getParseUrl(page, siteEntity);
-        } catch (Exception exception) {
+        } catch (Exception exception) {//todo
             siteEntity.setError("Ошибка индексации: сайт не доступен: " + exception);
             siteEntity.setStatusTime(LocalDateTime.now());
             siteEntity.setStatus(EnumStatus.FAILED);
@@ -109,7 +109,7 @@ public class StatisticsServiceImpl implements StatisticsService {
         ForkJoinPool forkJoinPool = new ForkJoinPool();
         SaveLemmaAndIndex saveLemmaAndIndex = new SaveLemmaAndIndex(lemmaRepository, indexRepository);
         try {
-            forkJoinPool.invoke(new SiteMap(page, pageRepository, siteRepository, siteEntity,
+            forkJoinPool.invoke(new SaveSiteMap(page, pageRepository, siteRepository, siteEntity,
                     saveLemmaAndIndex));
             siteEntity.setStatus(EnumStatus.INDEXED);
             siteEntity.setStatusTime(LocalDateTime.now());
@@ -138,7 +138,7 @@ public class StatisticsServiceImpl implements StatisticsService {
 
     @Override
     public boolean startIndexPage(String url) {
-        String regex = BaseUrlRegex.getRegex() + "[^/]+";
+        String regex = BaseRegex.getREGEX_URL() + "[^/]+";
         String urlPage = url.replaceAll(regex, "");
         String urlSite = url.replaceAll(urlPage, "");
         boolean isSite = sites.getSites().stream().map(Site::getUrl).anyMatch(s -> s.contains(urlSite));
@@ -161,9 +161,7 @@ public class StatisticsServiceImpl implements StatisticsService {
             page.getIndexEntity().stream()
                     .map(IndexEntity::getLemma)
                     .peek(l -> l.setFrequency(l.getFrequency() - 1))
-                    .forEach(l->lemmaRepository.updateLemma(l.getId(), l.getFrequency()));
-//                    .filter(l -> l.getFrequency() == 0)
-//                    .forEach(l -> lemmaRepository.deleteById(l.getId()));
+                    .forEach(l -> lemmaRepository.updateLemma(l.getId(), l.getFrequency()));
             pageRepository.deleteById(page.getId());
         }
         PageEntity pageEntity = new PageEntity();
@@ -189,6 +187,27 @@ public class StatisticsServiceImpl implements StatisticsService {
         return true;
     }
 
+    @Override
+    public boolean startSearch(String query) {
+        String[] wordQuery = query.split(BaseRegex.getREGEX_WORD());
+        FindLemma findLemma = new FindLemma();
+        HashMap<String, Float> queryLemma = findLemma.receivedLemmas(wordQuery);
+        List<List<LemmaEntity>> lemmas = new ArrayList<>();
+        for (String str : queryLemma.keySet()) {
+            lemmas.add(lemmaRepository.findByLemma(str));
+        }
+        for (List<LemmaEntity> lemma : lemmas) {
+//            SiteSearch siteSearch = new SiteSearch();
+//            siteSearch.setLemma(lemma);
+            System.out.println("Размер: "+lemma.size());
+            for (LemmaEntity l : lemma){
+                System.out.println(l.getLemma() + "   " +l.getFrequency());
+                System.out.println();
+            }
+        }
+        return false;
+    }
+
     public SiteEntity createSite(Site site) {
         SiteEntity siteEntity = new SiteEntity();
         siteEntity.setName(site.getName());
@@ -197,43 +216,5 @@ public class StatisticsServiceImpl implements StatisticsService {
         siteEntity.setStatusTime(LocalDateTime.now());
         return siteEntity;
     }
-
-
-    public SiteEntity mapToEntity(DetailedStatisticsItem item) {
-
-        SiteEntity siteEntity = new SiteEntity();
-
-        siteEntity.setName(item.getName());
-        siteEntity.setUrl(item.getUrl());
-        siteEntity.setError(item.getError());
-        siteEntity.setStatusTime(LocalDateTime.now());
-
-        siteEntity.setStatus(EnumStatus.INDEXING);
-        return siteEntity;
-    }
 }
 
-
-//    public static void isShutdownNow(Boolean isShut) {
-//        isShutdown = isShut;
-//    }
-//}
-//        String baseUrl = site.getUrl().contains(regexUpdateUrl) ?
-//                site.getUrl().replace(regexUpdateUrl, "") : site.getUrl();
-//        page.setPath(siteEntity.getUrl());
-//        ParseHTML parseHTML=new ParseHTML();
-//        parseHTML.getParseUrl(page,siteEntity);
-
-
-//            PageEntity pageInitialSite = pageEntities.stream().filter(p -> p.equals(page)).findFirst().get();
-//            if (pageInitialSite.getCode() != 200) {
-//                throw new Exception(pageInitialSite.getContent());
-//            }
-//            Set<PageEntity> listPage = pageEntities.stream().parallel().map(p -> {
-//                        p.setSite(siteEntity);
-//                        p.setPath(p.getPath().replaceAll(baseUrl, ""));
-//                        return p;
-//                    }).filter(p -> !(p.getPath().isEmpty()))
-//                    .collect(Collectors.toSet());
-
-//            siteEntity.setPage(listPage);

@@ -8,6 +8,7 @@ import org.jsoup.select.Elements;
 import searchengine.controllers.ApiController;
 import searchengine.model.PageEntity;
 import searchengine.model.SiteEntity;
+import searchengine.regex.BaseRegex;
 
 import java.io.IOException;
 import java.util.TreeSet;
@@ -17,7 +18,7 @@ public class ParseHTML {
 
     public TreeSet<PageEntity> getParseUrl(PageEntity page, SiteEntity siteEntity) {
         TreeSet<PageEntity> treeSetUrl = new TreeSet<>();
-        String baseUrlRegex = BaseUrlRegex.getBaseUrl(siteEntity);
+        String baseUrlRegex = BaseRegex.getBaseUrl(siteEntity);
         String urlRegex = baseUrlRegex + "[^#\\s]+";
 
         if (page.getCode() != 200) {

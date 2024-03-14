@@ -11,12 +11,10 @@ import java.util.List;
 
 @Data
 public class FindLemma {
-    private PageEntity pageEntity;
     LuceneMorphology luceneMorph;
     private static final String[] partsSpeech = new String[]{"МЕЖД", "ПРЕДЛ", "СОЮЗ"};
 
-    public FindLemma(PageEntity pageEntity) {
-        this.pageEntity = pageEntity;
+    public FindLemma() {
         try {
             this.luceneMorph = new RussianLuceneMorphology();
         } catch (Exception e) {
@@ -24,12 +22,10 @@ public class FindLemma {
         }
     }
 
-    public HashMap<String, Float> receivedLemmas() {
-        String regex = "[^А-яЁё]+";
-        HashMap<String, Float> lemmas = new HashMap<>();
-        String[] words = Jsoup.parse(pageEntity.getContent()).text().toLowerCase().split(regex);
+    public HashMap<String, Float> receivedLemmas(String[] words) {
 
-//        try {
+        HashMap<String, Float> lemmas = new HashMap<>();
+
             for (String word : words) {
                 if (word.isEmpty()){
                     continue;
@@ -48,11 +44,6 @@ public class FindLemma {
                     lemmas.put(baseWord, 1f);
                 }
             }
-//        }catch (Exception e){//TODO
-//            System.out.println("find lemma ошибка");
-//            e.printStackTrace();
-//
-//        }
         System.out.println(lemmas.size());
         return lemmas;
     }
