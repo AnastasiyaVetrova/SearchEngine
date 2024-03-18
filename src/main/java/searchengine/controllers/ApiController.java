@@ -6,7 +6,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import searchengine.config.Site;
 import searchengine.config.SitesList;
-import searchengine.dto.statistics.ResponseMessage;
+import searchengine.dto.response.Message;
 import searchengine.dto.statistics.StatisticsResponse;
 import searchengine.services.StatisticsService;
 
@@ -34,10 +34,10 @@ public class ApiController {
     }
 
     @GetMapping("/startIndexing")
-    public ResponseEntity<ResponseMessage> startIndexing() {
+    public ResponseEntity<Message> startIndexing() {
         boolean isEnd = false;
         if (!isIndexingEnd) {
-            return new ResponseEntity<>(new ResponseMessage(isEnd, "Индексация уже запущена"), HttpStatus.OK);
+            return new ResponseEntity<>(new Message(isEnd, "Индексация уже запущена"), HttpStatus.OK);
         }
         isIndexingEnd = false;
         executorService = Executors.newCachedThreadPool();
@@ -55,14 +55,14 @@ public class ApiController {
             exception.printStackTrace();
         }
         isIndexingEnd = true;
-        return new ResponseEntity<>(new ResponseMessage(isEnd), HttpStatus.OK);
+        return new ResponseEntity<>(new Message(isEnd), HttpStatus.OK);
     }
 
     @GetMapping("/stopIndexing")
-    public ResponseEntity<ResponseMessage> stopIndexing() {
+    public ResponseEntity<Message> stopIndexing() {
         boolean isClose = false;
         if (isIndexingEnd) {
-            return new ResponseEntity<>(new ResponseMessage(isClose, "Индексация не запущена"), HttpStatus.OK);
+            return new ResponseEntity<>(new Message(isClose, "Индексация не запущена"), HttpStatus.OK);
         }
         isIndexingEnd = true;
         try {
@@ -70,26 +70,26 @@ public class ApiController {
         } catch (Exception exception) {
             executorService.shutdownNow();
         }
-        return new ResponseEntity<>(new ResponseMessage(isClose), HttpStatus.OK);
+        return new ResponseEntity<>(new Message(isClose), HttpStatus.OK);
     }
 
     @PostMapping("/indexPage")
-    public ResponseEntity<ResponseMessage> indexPage(@RequestParam String url) {
+    public ResponseEntity<Message> indexPage(@RequestParam String url) {
         isIndexingEnd = false;
         boolean isIndexPage = statisticsService.startIndexPage(url);
         if (!isIndexPage) {
-            return new ResponseEntity<>(new ResponseMessage(isIndexPage,
+            return new ResponseEntity<>(new Message(isIndexPage,
                     "Данная страница находится за пределами сайтов, указанных в конфигурационном файле"
             ), HttpStatus.OK);
         }
         isIndexingEnd = true;
-        return new ResponseEntity<>(new ResponseMessage(isIndexPage), HttpStatus.OK);
+        return new ResponseEntity<>(new Message(isIndexPage), HttpStatus.OK);
     }
 
     @GetMapping("/search")
-    public ResponseEntity<ResponseMessage> search(@RequestParam String query) {
+    public ResponseEntity<Message> search(@RequestParam String query) {
         statisticsService.startSearch(query);
 
-        return new ResponseEntity<>(new ResponseMessage(true), HttpStatus.OK);
+        return new ResponseEntity<>(new Message(true), HttpStatus.OK);
     }
 }

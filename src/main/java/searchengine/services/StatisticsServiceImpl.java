@@ -8,9 +8,11 @@ import org.springframework.stereotype.Service;
 
 import searchengine.config.Site;
 import searchengine.config.SitesList;
-import searchengine.dto.search.SiteSearch;
+import searchengine.dto.search.IndexSearch;
+import searchengine.dto.search.LemmaSearch;
 import searchengine.dto.statistics.*;
 import searchengine.lemmas.FindLemma;
+import searchengine.lemmas.FindSearchLemma;
 import searchengine.model.*;
 import searchengine.parsers.SaveLemmaAndIndex;
 import searchengine.regex.BaseRegex;
@@ -141,7 +143,7 @@ public class StatisticsServiceImpl implements StatisticsService {
         String regex = BaseRegex.getREGEX_URL() + "[^/]+";
         String urlPage = url.replaceAll(regex, "");
         String urlSite = url.replaceAll(urlPage, "");
-        boolean isSite = sites.getSites().stream().map(Site::getUrl).anyMatch(s -> s.contains(urlSite));
+        boolean isSite = sites.getSites().stream().map(Site::getUrl).filter(s -> s.equals(urlSite)).anyMatch(s -> s.contains(urlSite));
         if (!isSite) {
             return false;
         }
@@ -158,7 +160,7 @@ public class StatisticsServiceImpl implements StatisticsService {
 
         if (pageRepository.existsByPath(urlPage, siteEntity)) {
             PageEntity page = pageRepository.findByPathAndSite(urlPage, siteEntity);
-            page.getIndexEntity().stream()
+            page.getIndexEntity().stream()//todo уточнить как удалить обьект если столбец становится равным 0
                     .map(IndexEntity::getLemma)
                     .peek(l -> l.setFrequency(l.getFrequency() - 1))
                     .forEach(l -> lemmaRepository.updateLemma(l.getId(), l.getFrequency()));
@@ -187,27 +189,6 @@ public class StatisticsServiceImpl implements StatisticsService {
         return true;
     }
 
-    @Override
-    public boolean startSearch(String query) {
-        String[] wordQuery = query.split(BaseRegex.getREGEX_WORD());
-        FindLemma findLemma = new FindLemma();
-        HashMap<String, Float> queryLemma = findLemma.receivedLemmas(wordQuery);
-        List<List<LemmaEntity>> lemmas = new ArrayList<>();
-        for (String str : queryLemma.keySet()) {
-            lemmas.add(lemmaRepository.findByLemma(str));
-        }
-        for (List<LemmaEntity> lemma : lemmas) {
-//            SiteSearch siteSearch = new SiteSearch();
-//            siteSearch.setLemma(lemma);
-            System.out.println("Размер: "+lemma.size());
-            for (LemmaEntity l : lemma){
-                System.out.println(l.getLemma() + "   " +l.getFrequency());
-                System.out.println();
-            }
-        }
-        return false;
-    }
-
     public SiteEntity createSite(Site site) {
         SiteEntity siteEntity = new SiteEntity();
         siteEntity.setName(site.getName());
@@ -216,5 +197,50 @@ public class StatisticsServiceImpl implements StatisticsService {
         siteEntity.setStatusTime(LocalDateTime.now());
         return siteEntity;
     }
+
+    @Override
+    public boolean startSearch(String query) {
+        String[] wordQuery = query.split(BaseRegex.getREGEX_WORD());
+        FindLemma findLemma = new FindLemma();
+        HashMap<String, Float> queryLemma = findLemma.receivedLemmas(wordQuery);
+        List<List<LemmaEntity>> lemmas = new ArrayList<>();
+        for (String str : queryLemma.keySet()) {
+            lemmas.add(lemmaRepository.findByLemma(str));
+        }//todo сделать отдельный класс
+        HashMap<Integer, LemmaSearch> lemmasOneSite = new HashMap<>();
+        for (List<LemmaEntity> lemma : lemmas) {
+            for (LemmaEntity l : lemma) {
+                if (!lemmasOneSite.containsKey(l.getSite().getId())) {
+                    int countPage = pageRepository.countBySite(l.getSite());
+                    if (l.getFrequency() / countPage * 100 > 80) {
+                        continue;
+                    }
+                    LemmaSearch lemmaSearch = new LemmaSearch();
+                    lemmaSearch.addLemmaEntity(l);
+                    lemmaSearch.setCountPage(countPage);
+                    lemmasOneSite.put(l.getSite().getId(), lemmaSearch);
+                } else {
+                    if (l.getFrequency() / lemmasOneSite.get(l.getSite().getId()).getCountPage() * 100 > 80) {
+                        continue;
+                    }
+                    lemmasOneSite.get(l.getSite().getId()).addLemmaEntity(l);
+                }
+            }
+            FindSearchLemma findSearchLemma = new FindSearchLemma();
+            List<IndexSearch> indexSearchList = new ArrayList<>();
+            for (int key : lemmasOneSite.keySet()) {
+                IndexSearch indexSearch = new IndexSearch(findSearchLemma.generateSearchPage(lemmasOneSite.get(key)));
+                indexSearchList.add(indexSearch);//в каждом indexSearch список страниц, которые встречаются для искомых лемм
+            }
+            int countSearchPage = indexSearchList.stream().mapToInt(i -> i.getIndexes().size()).sum();
+            for (IndexSearch i : indexSearchList) {
+
+            }
+        }
+
+        return false;
+    }
+
+
 }
 
