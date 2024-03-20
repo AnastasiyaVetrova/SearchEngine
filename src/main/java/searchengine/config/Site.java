@@ -2,7 +2,7 @@ package searchengine.config;
 
 import lombok.Getter;
 import lombok.Setter;
-//помощник для бина
+
 @Setter
 @Getter
 public class Site {

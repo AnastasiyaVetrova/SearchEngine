@@ -24,11 +24,11 @@ indexing-settings:
 
     - url: https://www.lenta.ru
       name: Лента.ру
-#    - url: https://www.skillbox.ru
-#      name: Skillbox
     - url: https://www.playback.ru
-      name: PlayBack.Ru
+      name: PlayBack
     - url: https://et-cetera.ru/mobile/
-      name: et-cetera
-    - url: https://dombulgakova.ru
-      name: dombulgakova
+      name: Сetera-mobile
+    - url: https://ipfran.ru
+      name: ipfran
+    - url: https://nikoartgallery.com
+      name: nikoartgallery

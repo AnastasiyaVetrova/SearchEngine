@@ -4,7 +4,6 @@ import org.springframework.stereotype.Service;
 import searchengine.config.Site;
 import searchengine.config.SitesList;
 import searchengine.dto.response.MessageResponse;
-import searchengine.dto.response.SearchMessage;
 import searchengine.dto.statistics.StatisticsResponse;
 @Service
 public interface StatisticsService {

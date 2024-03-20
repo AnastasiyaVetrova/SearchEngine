@@ -8,7 +8,6 @@ import searchengine.config.Site;
 import searchengine.config.SitesList;
 import searchengine.dto.response.Message;
 import searchengine.dto.response.MessageResponse;
-import searchengine.dto.response.SearchMessage;
 import searchengine.dto.statistics.StatisticsResponse;
 import searchengine.services.StatisticsService;
 
@@ -54,7 +53,7 @@ public class ApiController {
             isEnd = executorService.awaitTermination(1, TimeUnit.HOURS);
         } catch (
                 Exception exception) {
-            exception.printStackTrace();
+            return new ResponseEntity<>(new Message(isEnd, "Индексация остановлена принудительно"), HttpStatus.OK);
         }
         isIndexingEnd = true;
         return new ResponseEntity<>(new Message(isEnd), HttpStatus.OK);
@@ -70,7 +69,7 @@ public class ApiController {
         try {
             isClose = executorService.awaitTermination(1, TimeUnit.MINUTES);
         } catch (Exception exception) {
-            executorService.shutdownNow();
+            return new ResponseEntity<>(new Message(isClose, "Остановить индексацию не удалось"), HttpStatus.OK);
         }
         return new ResponseEntity<>(new Message(isClose), HttpStatus.OK);
     }
@@ -95,10 +94,6 @@ public class ApiController {
         if (offset >= limit) {
             return new ResponseEntity<>(new Message(false, "Неверно заданы параметры поиска"), HttpStatus.OK);
         }
-//        if (site == null) {
-//            return new ResponseEntity<>(new SearchMessage(), HttpStatus.OK);
-//        }
-        // SearchMessage searchMessage = statisticsService.startSearch(query, site, offset, limit);
         return new ResponseEntity<>(statisticsService.startSearch(query, site, offset, limit), HttpStatus.OK);
     }
 }

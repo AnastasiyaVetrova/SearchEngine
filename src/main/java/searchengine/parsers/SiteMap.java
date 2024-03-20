@@ -44,10 +44,4 @@ public class SiteMap extends RecursiveAction {
         }
     }
 }
-//        TreeSet<PageEntity> resultUrl = new TreeSet<>();
-//        if (!resultUrl.isEmpty()) {
-//            savePage.savePageToDB(resultUrl, siteEntity);
-//        }
 
-//        resultUrl.forEach(findLemma::findLemmaOnPage);
-//            resultUrl.add(page);

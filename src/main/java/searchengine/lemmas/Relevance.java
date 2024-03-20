@@ -33,7 +33,6 @@ public class Relevance {
             }
         }
         relativeRelevance(pageSearchTreeMap);
-        System.out.println(pageSearchTreeMap.size());
         return pageSearchTreeMap;
     }
 
@@ -45,10 +44,9 @@ public class Relevance {
         }
         for (Integer key : pageSearchTreeMap.keySet()) {
             pageSearchTreeMap.get(key).setRelevance(pageSearchTreeMap.get(key).getRelevance() / absRelevance);
-            System.out.println(pageSearchTreeMap.get(key).getRelevance()+"   " +absRelevance);
         }
     }
-//todo поиск по лемам
+
     public String findSnippet(String text) {
         String snippet = "...";
         for (String word : wordQuery) {

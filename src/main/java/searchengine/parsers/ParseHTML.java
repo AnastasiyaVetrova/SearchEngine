@@ -81,17 +81,3 @@ public class ParseHTML {
                 || path.contains("sort");
     }
 }
-////        String pageUrl = page.getPath().contains(siteEntity.getUrl()) ? page.getPath() :
-////                siteEntity.getUrl().concat(page.getPath());
-////        String pageUrl =siteEntity.getUrl().concat(page.getPath());
-////        String pageUrl = page.getPath();
-//        String regex="https?://(www.)?";
-//        String res=siteEntity.getUrl().replaceAll(regex,"");
-//
-////        String baseUrlRegex="https?://(www.)?"+res;
-//        String baseUrlRegex = "https?://(www.)?(?="+res+")[^#+\\s]+";
-//                String path = siteEntity.getUrl().concat(elemUrl);
-//        String pageUrl = page.getPath().contains(siteEntity.getUrl()) ? page.getPath() :
-//                siteEntity.getUrl().concat(page.getPath());
-//        Connection connection = Jsoup.connect(pageUrl);
-//        try {

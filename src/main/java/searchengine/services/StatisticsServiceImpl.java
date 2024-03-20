@@ -14,6 +14,7 @@ import searchengine.dto.response.SearchMessage;
 import searchengine.dto.search.IndexSearch;
 import searchengine.dto.search.LemmaSearch;
 import searchengine.dto.search.PageSearch;
+import searchengine.dto.search.ResultSearch;
 import searchengine.dto.statistics.*;
 import searchengine.lemmas.GroupLemmaBySite;
 import searchengine.lemmas.MorphAnalysisLemma;
@@ -40,7 +41,6 @@ import java.util.concurrent.ForkJoinPool;
 @RequiredArgsConstructor
 public class StatisticsServiceImpl implements StatisticsService {
 
-    //   private final Random random = new Random();
     private final SitesList sites;
     private final PageRepository pageRepository;
     private final SiteRepository siteRepository;
@@ -49,12 +49,6 @@ public class StatisticsServiceImpl implements StatisticsService {
 
     @Override
     public StatisticsResponse getStatistics() {
-        String[] statuses = {"INDEXED", "FAILED", "INDEXING"};
-        String[] errors = {
-                "Ошибка индексации: главная страница сайта не доступна",
-                "Ошибка индексации: сайт не доступен",
-                ""
-        };
 
         TotalStatistics total = new TotalStatistics();
         total.setSites(sites.getSites().size());
@@ -211,25 +205,23 @@ public class StatisticsServiceImpl implements StatisticsService {
             indexSearchList.add(indexSearch);
         }
         Relevance relevance = new Relevance(wordQuery);
-        List<PageSearch> resultPage = new ArrayList<>();
+        ResultSearch resultPage = new ResultSearch();
         TreeMap<Integer, PageSearch> pageSearchTreeMap;
         for (IndexSearch index : indexSearchList) {
             pageSearchTreeMap = relevance.absoluteRelevance(index);
             for (Integer key : pageSearchTreeMap.keySet()) {
-                resultPage.add(pageSearchTreeMap.get(key));
+                if (pageSearchTreeMap.get(key).getSnippet().length() < 4) {
+                    continue;
+                }
+                resultPage.addResult(pageSearchTreeMap.get(key));
             }
         }
-        if (resultPage.isEmpty()) {
+        if (resultPage.getData().isEmpty()) {
             return new Message(false, "Страницы по запросу не найдены");
         }
-        SearchMessage searchMessage = new SearchMessage();
+        resultPage.getData().sort(Comparator.comparing(PageSearch::getRelevance, Comparator.reverseOrder()));
+        SearchMessage searchMessage = new SearchMessage(resultPage, offset, limit);
         searchMessage.setResult(true);
-        searchMessage.setCount(resultPage.size());
-        int maxPage = Math.min(resultPage.size(), limit);
-        int minPage = resultPage.size() < offset ? 0 : offset;
-        for (int i = minPage; i <= maxPage; i++) {
-            searchMessage.addData(resultPage.get(i));
-        }
         return searchMessage;
     }
 
