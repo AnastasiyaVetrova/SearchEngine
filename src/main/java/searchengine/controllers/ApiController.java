@@ -7,6 +7,7 @@ import org.springframework.web.bind.annotation.*;
 import searchengine.config.Site;
 import searchengine.config.SitesList;
 import searchengine.dto.response.Message;
+import searchengine.dto.response.SearchMessage;
 import searchengine.dto.statistics.StatisticsResponse;
 import searchengine.services.StatisticsService;
 
@@ -87,9 +88,13 @@ public class ApiController {
     }
 
     @GetMapping("/search")
-    public ResponseEntity<Message> search(@RequestParam String query) {
-        statisticsService.startSearch(query);
-
-        return new ResponseEntity<>(new Message(true), HttpStatus.OK);
+    public ResponseEntity<SearchMessage> search(@RequestParam String query, @RequestParam(required = false) Integer offset,
+                                                @RequestParam(required = false) Integer limit,
+                                                @RequestParam(required = false) String site) {
+        if (site == null) {
+            return new ResponseEntity<>(new SearchMessage(), HttpStatus.OK);
+        }
+        SearchMessage searchMessage = statisticsService.startSearch(query, site,offset,limit);
+        return new ResponseEntity<>(searchMessage, HttpStatus.OK);
     }
 }

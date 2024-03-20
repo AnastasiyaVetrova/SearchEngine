@@ -4,6 +4,7 @@ import lombok.Data;
 import searchengine.dto.search.LemmaSearch;
 import searchengine.model.IndexEntity;
 import searchengine.model.LemmaEntity;
+
 import java.util.*;
 
 @Data
@@ -17,7 +18,7 @@ public class FindSearchLemma {
                 return o1.getFrequency() - o2.getFrequency();
             }
         });
-        List<IndexEntity> searchIndex = new ArrayList<>();
+        List<IndexEntity> searchIndex = lemmas.get(0).getIndexEntity();
         for (LemmaEntity l : lemmas) {
             searchIndex = searchPage(l, searchIndex);
         }
@@ -27,8 +28,10 @@ public class FindSearchLemma {
     public List<IndexEntity> searchPage(LemmaEntity lemma, List<IndexEntity> searchIndex) {
         List<IndexEntity> indexList = new ArrayList<>();
         for (IndexEntity i : lemma.getIndexEntity()) {
-            if (searchIndex.contains(i)) {
-                indexList.add(i);
+            for (IndexEntity j : searchIndex) {
+                if (j.getPage().equals(i.getPage())) {
+                    indexList.add(i);
+                }
             }
         }
         return indexList;

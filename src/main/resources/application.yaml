@@ -30,7 +30,5 @@ indexing-settings:
       name: PlayBack.Ru
     - url: https://et-cetera.ru/mobile/
       name: et-cetera
-#    - url: https://www.svetlovka.ru
-#      name: svetlovka
     - url: https://dombulgakova.ru
       name: dombulgakova

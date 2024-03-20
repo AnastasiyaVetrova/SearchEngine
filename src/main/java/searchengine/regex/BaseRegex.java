@@ -10,9 +10,7 @@ public class BaseRegex {
     private static final String REGEX_WORD = "[^А-яЁё]+";
     public static String getBaseUrl(SiteEntity siteEntity){
         String res=siteEntity.getUrl().replaceAll(REGEX_URL,"");
-//        String regex1 = "https?://(www.)?"+res+"[#^\\s]+";
         String baseUrlRegex="http[s]?://(www.)?("+res+")";
-
         return baseUrlRegex;
     }
 }

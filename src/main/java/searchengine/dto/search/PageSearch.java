@@ -9,10 +9,11 @@ public class PageSearch implements Comparable<PageSearch> {
     private String urlPage;
     private String title;
     private String snippet;
-    private Double relevance;
+    private Float relevance;
 
     @Override
     public int compareTo(PageSearch o) {
-        return this.getRelevance().compareTo(o.getRelevance());
+        return o.getRelevance().compareTo(this.getRelevance());//todo должен быть обратный порядок
+//                this.getRelevance().compareTo(o.getRelevance());
     }
 }

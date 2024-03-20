@@ -10,10 +10,10 @@ public class Main {
         try {
             LuceneMorphology luceneMorph =
                     new RussianLuceneMorphology();
-//            List<String> wordBaseForms =
-//                    luceneMorph.getNormalForms("лисы");
-//            wordBaseForms.forEach(System.out::println);
-            String name = "у";
+            List<String> wordBaseForms =
+                    luceneMorph.getNormalForms("лошадей");
+            wordBaseForms.forEach(System.out::println);
+            String name = "лисицы";
             List<String> worldInfo = luceneMorph.getMorphInfo(name);
             worldInfo.forEach(System.out::println);
             for (String w : worldInfo) {

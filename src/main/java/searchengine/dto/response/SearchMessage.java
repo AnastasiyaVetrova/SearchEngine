@@ -1,13 +1,22 @@
 package searchengine.dto.response;
 
-import searchengine.dto.search.SiteSearch;
+import lombok.Data;
+import searchengine.dto.search.PageSearch;
 
 import java.util.TreeSet;
 
+@Data
 public class SearchMessage {
     private boolean result;
     private String error;
     private int count;
-    private TreeSet<SiteSearch> data;
+    private TreeSet<PageSearch> data;
 
+    public SearchMessage() {
+        this.data = new TreeSet<>();
+    }
+
+    public void addData(PageSearch pageSearch) {
+        data.add(pageSearch);
+    }
 }

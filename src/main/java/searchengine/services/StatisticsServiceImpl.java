@@ -8,15 +8,21 @@ import org.springframework.stereotype.Service;
 
 import searchengine.config.Site;
 import searchengine.config.SitesList;
+import searchengine.dto.response.SearchMessage;
 import searchengine.dto.search.IndexSearch;
 import searchengine.dto.search.LemmaSearch;
+import searchengine.dto.search.PageSearch;
 import searchengine.dto.statistics.*;
-import searchengine.lemmas.FindLemma;
+import searchengine.lemmas.GroupLemmaBySite;
+import searchengine.lemmas.MorphAnalysisLemma;
 import searchengine.lemmas.FindSearchLemma;
+import searchengine.lemmas.Relevance;
 import searchengine.model.*;
+import searchengine.parsers.FindLemma;
 import searchengine.parsers.SaveLemmaAndIndex;
+import searchengine.parsers.SavePage;
 import searchengine.regex.BaseRegex;
-import searchengine.parsers.SaveSiteMap;
+import searchengine.parsers.SiteMap;
 import searchengine.repositories.IndexRepository;
 import searchengine.repositories.LemmaRepository;
 import searchengine.repositories.PageRepository;
@@ -32,8 +38,8 @@ import java.util.concurrent.ForkJoinPool;
 @RequiredArgsConstructor
 public class StatisticsServiceImpl implements StatisticsService {
 
-    private final Random random = new Random();
-    private final SitesList sites;//создаем список сайтов
+    //   private final Random random = new Random();
+    private final SitesList sites;
     private final PageRepository pageRepository;
     private final SiteRepository siteRepository;
     private final LemmaRepository lemmaRepository;
@@ -48,39 +54,41 @@ public class StatisticsServiceImpl implements StatisticsService {
                 ""
         };
 
-        TotalStatistics total = new TotalStatistics();//общая статистика: int site, int page, int lemma, boolean index
-        total.setSites(sites.getSites().size());//добавляем количество сайтов
-        total.setIndexing(true);// добавляем индекс true
+        TotalStatistics total = new TotalStatistics();
+        total.setSites(sites.getSites().size());
+        total.setIndexing(true);
 
-        List<DetailedStatisticsItem> detailed = new ArrayList<>();//список обьектов с деталями сайта
-        List<Site> sitesList = sites.getSites();//получаем список самих сайтов
-        for (int i = 0; i < sitesList.size(); i++) {//для каждого сайта устанавливаем детали
-            Site site = sitesList.get(i);//сайт
-            DetailedStatisticsItem item = new DetailedStatisticsItem();//детали сайта
-            item.setName(site.getName());//имя сайт-детали
-            item.setUrl(site.getUrl());//адрес сайт-детали
+        List<DetailedStatisticsItem> detailed = new ArrayList<>();
+        List<Site> sitesList = sites.getSites();
+        for (int i = 0; i < sitesList.size(); i++) {
+            Site site = sitesList.get(i);
+            DetailedStatisticsItem item = new DetailedStatisticsItem();
+            item.setName(site.getName());
+            item.setUrl(site.getUrl());
             SiteEntity siteEntity = siteRepository.findByUrl(site.getUrl());
+            if (siteEntity == null) {
+                continue;
+            }
             int pages = pageRepository.countBySite(siteEntity);
             int lemmas = lemmaRepository.countBySite(siteEntity);
-            item.setPages(pages);//страницы-детали
-            item.setLemmas(lemmas);//леммы-детали
+            item.setPages(pages);
+            item.setLemmas(lemmas);
             item.setStatus(siteEntity.getStatus().toString());
             item.setError(siteEntity.getError());
             item.setStatusTime(siteEntity.getStatusTime()
                     .atZone(ZoneId.systemDefault())
                     .toInstant().toEpochMilli());
-            total.setPages(total.getPages() + pages);//в общую статистику добавляем количество найденных страниц
-            total.setLemmas(total.getLemmas() + lemmas);//в общую статистику добавляем количество найденных страниц-тотал заполнено
-            detailed.add(item);//получаем список сайтов из app с детальным описанием
+            total.setPages(total.getPages() + pages);
+            total.setLemmas(total.getLemmas() + lemmas);
+            detailed.add(item);
 
         }
-
-        StatisticsResponse response = new StatisticsResponse();//класс возврата списка сайтов с деталями
-        StatisticsData data = new StatisticsData();//сам список вложен в response
-        data.setTotal(total);//общая статистика всех сайтов вложена в data
-        data.setDetailed(detailed);//сайты детально вложены в data
-        response.setStatistics(data);//data вложена в response
-        response.setResult(true);//результат установлен true
+        StatisticsResponse response = new StatisticsResponse();
+        StatisticsData data = new StatisticsData();
+        data.setTotal(total);
+        data.setDetailed(detailed);
+        response.setStatistics(data);
+        response.setResult(true);
         return response;
     }
 
@@ -90,45 +98,32 @@ public class StatisticsServiceImpl implements StatisticsService {
         SiteEntity siteEntity = createSite(site);
         siteRepository.save(siteEntity);
 
-        Connection connection = Jsoup.connect(siteEntity.getUrl());
-        PageEntity page = new PageEntity();
+        PageEntity page;
         try {
-            page.setPath(siteEntity.getUrl());
-            page.setContent(connection.get().toString());
-            int code = connection.response().statusCode();
-            if (code != 200) {
-                throw new Exception();
-            }
-            page.setCode(code);
-
-        } catch (Exception exception) {//todo
+            page = createPage(siteEntity.getUrl(), siteEntity);
+        } catch (Exception exception) {
             siteEntity.setError("Ошибка индексации: сайт не доступен: " + exception);
-            siteEntity.setStatusTime(LocalDateTime.now());
             siteEntity.setStatus(EnumStatus.FAILED);
             siteRepository.save(siteEntity);
             return true;
         }
         ForkJoinPool forkJoinPool = new ForkJoinPool();
+        SavePage savePage = new SavePage(pageRepository, siteRepository);
         SaveLemmaAndIndex saveLemmaAndIndex = new SaveLemmaAndIndex(lemmaRepository, indexRepository);
         try {
-            forkJoinPool.invoke(new SaveSiteMap(page, pageRepository, siteRepository, siteEntity,
-                    saveLemmaAndIndex));
+            forkJoinPool.invoke(new SiteMap(page, savePage,
+                    siteEntity, saveLemmaAndIndex));
             siteEntity.setStatus(EnumStatus.INDEXED);
-            siteEntity.setStatusTime(LocalDateTime.now());
             siteRepository.save(siteEntity);
         } catch (CancellationException exception) {
             forkJoinPool.shutdownNow();
             siteEntity.setError("Индексация остановлена пользователем: " + exception);
-            siteEntity.setStatusTime(LocalDateTime.now());
             siteEntity.setStatus(EnumStatus.FAILED);
             siteRepository.save(siteEntity);
-
         } catch (Exception exception) {
             siteEntity.setError("Ошибка в процессе индексации: " + exception);
-            siteEntity.setStatusTime(LocalDateTime.now());
             siteEntity.setStatus(EnumStatus.FAILED);
             siteRepository.save(siteEntity);
-            exception.printStackTrace();
         }
         return true;
     }
@@ -143,7 +138,9 @@ public class StatisticsServiceImpl implements StatisticsService {
         String regex = BaseRegex.getREGEX_URL() + "[^/]+";
         String urlPage = url.replaceAll(regex, "");
         String urlSite = url.replaceAll(urlPage, "");
-        boolean isSite = sites.getSites().stream().map(Site::getUrl).filter(s -> s.equals(urlSite)).anyMatch(s -> s.contains(urlSite));
+        boolean isSite = sites.getSites().stream().map(Site::getUrl)
+                .filter(s -> s.equals(urlSite))
+                .anyMatch(s -> s.contains(urlSite));
         if (!isSite) {
             return false;
         }
@@ -153,40 +150,80 @@ public class StatisticsServiceImpl implements StatisticsService {
             siteEntity.setStatus(EnumStatus.INDEXING);
             siteRepository.save(siteEntity);
         } else {
-            Site site = sites.getSites().stream().filter(s -> s.getUrl().contains(urlSite)).findFirst().get();
+            Site site = sites.getSites().stream()
+                    .filter(s -> s.getUrl().contains(urlSite))
+                    .findFirst().get();
             siteEntity = createSite(site);
             siteRepository.save(siteEntity);
         }
 
         if (pageRepository.existsByPath(urlPage, siteEntity)) {
             PageEntity page = pageRepository.findByPathAndSite(urlPage, siteEntity);
-            page.getIndexEntity().stream()//todo уточнить как удалить обьект если столбец становится равным 0
+            page.getIndexEntity().stream()
                     .map(IndexEntity::getLemma)
                     .peek(l -> l.setFrequency(l.getFrequency() - 1))
                     .forEach(l -> lemmaRepository.updateLemma(l.getId(), l.getFrequency()));
             pageRepository.deleteById(page.getId());
         }
-        PageEntity pageEntity = new PageEntity();
-        pageEntity.setPath(urlPage);
-        pageEntity.setSite(siteEntity);
-        Connection connection = Jsoup.connect(url);
+        PageEntity pageEntity;
         try {
-            pageEntity.setContent(connection.get().toString());
-        } catch (
-                Exception e) {
-            pageEntity.setContent(e.toString());
-        } finally {
-            pageEntity.setCode(connection.response().statusCode());
+            pageEntity = createPage(urlPage, siteEntity);
             pageRepository.save(pageEntity);
-
-            if (pageEntity.getCode() == 200) {
-                SaveLemmaAndIndex saveLemmaAndIndex = new SaveLemmaAndIndex(lemmaRepository, indexRepository);
-                saveLemmaAndIndex.saveLemma(pageEntity);
-            }
+        } catch (Exception e) {
+            return false;
         }
+        SaveLemmaAndIndex saveLemmaAndIndex = new SaveLemmaAndIndex(lemmaRepository, indexRepository);
+        FindLemma findLemma = new FindLemma(saveLemmaAndIndex);
+        findLemma.findLemmaOnPage(pageEntity);
         siteEntity.setStatus(EnumStatus.INDEXED);
         siteRepository.save(siteEntity);
         return true;
+    }
+
+    @Override
+    public SearchMessage startSearch(String query, String url, Integer offset, Integer limit) {
+        String[] wordQuery = query.split(BaseRegex.getREGEX_WORD());
+        MorphAnalysisLemma morphAnalysisLemma = new MorphAnalysisLemma();
+        HashMap<String, Float> queryLemma = morphAnalysisLemma.receivedLemmas(wordQuery);
+        SiteEntity siteEntity = siteRepository.findByUrl(url);
+        List<List<LemmaEntity>> lemmas = new ArrayList<>();
+        for (String l : queryLemma.keySet()) {
+            if (siteEntity == null) {
+                lemmas.add(lemmaRepository.findByLemma(l));
+            } else {
+                List<LemmaEntity> list = new ArrayList<>();
+                list.add(lemmaRepository.findByLemmaAndSite(l, siteEntity));
+                lemmas.add(list);
+            }
+        }//todo сделать отдельный класс
+        GroupLemmaBySite groupLemmaBySite = new GroupLemmaBySite(pageRepository);
+        HashMap<Integer, LemmaSearch> lemmasOneSite = groupLemmaBySite.getLemmasOneSite(lemmas);
+
+        FindSearchLemma findSearchLemma = new FindSearchLemma();
+        List<IndexSearch> indexSearchList = new ArrayList<>();
+        for (int key : lemmasOneSite.keySet()) {
+            IndexSearch indexSearch = new IndexSearch(findSearchLemma.generateSearchPage(lemmasOneSite.get(key)));
+            indexSearchList.add(indexSearch);//в каждом indexSearch список страниц, которые встречаются для искомых лемм
+        }
+        Relevance relevance = new Relevance(wordQuery);
+        SearchMessage searchMessage = new SearchMessage();
+        for (IndexSearch index : indexSearchList) {
+            TreeMap<Integer, PageSearch> pageSearchTreeMap = relevance.absoluteRelevance(index);
+            for (Integer key : pageSearchTreeMap.keySet()) {
+                if (pageSearchTreeMap.get(key).getSnippet().length() <= 3) {
+                    continue;
+                }
+                searchMessage.addData(pageSearchTreeMap.get(key));
+            }
+        }
+        if (searchMessage.getData().isEmpty()) {
+            searchMessage.setResult(false);
+            searchMessage.setError("Страницы по запросу не найдены");
+            return searchMessage;
+        }
+        searchMessage.setResult(true);
+        searchMessage.setCount(searchMessage.getData().size());
+        return searchMessage;
     }
 
     public SiteEntity createSite(Site site) {
@@ -198,49 +235,27 @@ public class StatisticsServiceImpl implements StatisticsService {
         return siteEntity;
     }
 
-    @Override
-    public boolean startSearch(String query) {
-        String[] wordQuery = query.split(BaseRegex.getREGEX_WORD());
-        FindLemma findLemma = new FindLemma();
-        HashMap<String, Float> queryLemma = findLemma.receivedLemmas(wordQuery);
-        List<List<LemmaEntity>> lemmas = new ArrayList<>();
-        for (String str : queryLemma.keySet()) {
-            lemmas.add(lemmaRepository.findByLemma(str));
-        }//todo сделать отдельный класс
-        HashMap<Integer, LemmaSearch> lemmasOneSite = new HashMap<>();
-        for (List<LemmaEntity> lemma : lemmas) {
-            for (LemmaEntity l : lemma) {
-                if (!lemmasOneSite.containsKey(l.getSite().getId())) {
-                    int countPage = pageRepository.countBySite(l.getSite());
-                    if (l.getFrequency() / countPage * 100 > 80) {
-                        continue;
-                    }
-                    LemmaSearch lemmaSearch = new LemmaSearch();
-                    lemmaSearch.addLemmaEntity(l);
-                    lemmaSearch.setCountPage(countPage);
-                    lemmasOneSite.put(l.getSite().getId(), lemmaSearch);
-                } else {
-                    if (l.getFrequency() / lemmasOneSite.get(l.getSite().getId()).getCountPage() * 100 > 80) {
-                        continue;
-                    }
-                    lemmasOneSite.get(l.getSite().getId()).addLemmaEntity(l);
-                }
-            }
-            FindSearchLemma findSearchLemma = new FindSearchLemma();
-            List<IndexSearch> indexSearchList = new ArrayList<>();
-            for (int key : lemmasOneSite.keySet()) {
-                IndexSearch indexSearch = new IndexSearch(findSearchLemma.generateSearchPage(lemmasOneSite.get(key)));
-                indexSearchList.add(indexSearch);//в каждом indexSearch список страниц, которые встречаются для искомых лемм
-            }
-            int countSearchPage = indexSearchList.stream().mapToInt(i -> i.getIndexes().size()).sum();
-            for (IndexSearch i : indexSearchList) {
-
-            }
+    public PageEntity createPage(String url, SiteEntity siteEntity) throws Exception {
+        PageEntity page = new PageEntity();
+        page.setPath(url);
+        page.setSite(siteEntity);
+        Connection connection;
+        if (url.startsWith("http")) {
+            connection = Jsoup.connect(url);
+        } else {
+            connection = Jsoup.connect(siteEntity.getUrl().concat(url));
         }
-
-        return false;
+        page.setContent(connection.get().toString());
+        int code = connection.response().statusCode();
+        if (code != 200) {
+            throw new Exception();
+        }
+        page.setCode(code);
+        return page;
     }
-
-
 }
-
+//            int countSearchPage = indexSearchList.stream().mapToInt(i -> i.getIndexes().size()).sum();
+//            pageEntity.setContent(connection.get().toString());
+//        pageEntity.setPath(urlPage);
+//        pageEntity.setSite(siteEntity);
+//        Connection connection = Jsoup.connect(url);
