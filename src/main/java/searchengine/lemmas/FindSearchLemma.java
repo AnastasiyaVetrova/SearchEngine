@@ -10,22 +10,17 @@ import java.util.*;
 @Data
 public class FindSearchLemma {
 
-    public List<IndexEntity> generateSearchPage(LemmaSearch lemmaSearch) {
+    public List<IndexEntity> generateSearchIndex(LemmaSearch lemmaSearch) {
         List<LemmaEntity> lemmas = lemmaSearch.getLemmas();
-        lemmas.sort(new Comparator<LemmaEntity>() {
-            @Override
-            public int compare(LemmaEntity o1, LemmaEntity o2) {
-                return o1.getFrequency() - o2.getFrequency();
-            }
-        });
+        lemmas.sort(Comparator.comparingInt(LemmaEntity::getFrequency));
         List<IndexEntity> searchIndex = lemmas.get(0).getIndexEntity();
         for (LemmaEntity l : lemmas) {
-            searchIndex = searchPage(l, searchIndex);
+            searchIndex = searchIndex(l, searchIndex);
         }
         return searchIndex;
     }
 
-    public List<IndexEntity> searchPage(LemmaEntity lemma, List<IndexEntity> searchIndex) {
+    public List<IndexEntity> searchIndex (LemmaEntity lemma, List<IndexEntity> searchIndex) {
         List<IndexEntity> indexList = new ArrayList<>();
         for (IndexEntity i : lemma.getIndexEntity()) {
             for (IndexEntity j : searchIndex) {

@@ -43,7 +43,6 @@ public class MorphAnalysisLemma {
                 lemmas.put(baseWord, 1f);
             }
         }
-        System.out.println(lemmas.size());
         return lemmas;
     }
 

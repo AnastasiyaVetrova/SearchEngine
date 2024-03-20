@@ -8,6 +8,8 @@ import org.springframework.stereotype.Service;
 
 import searchengine.config.Site;
 import searchengine.config.SitesList;
+import searchengine.dto.response.Message;
+import searchengine.dto.response.MessageResponse;
 import searchengine.dto.response.SearchMessage;
 import searchengine.dto.search.IndexSearch;
 import searchengine.dto.search.LemmaSearch;
@@ -181,7 +183,7 @@ public class StatisticsServiceImpl implements StatisticsService {
     }
 
     @Override
-    public SearchMessage startSearch(String query, String url, Integer offset, Integer limit) {
+    public MessageResponse startSearch(String query, String url, Integer offset, Integer limit) {
         String[] wordQuery = query.split(BaseRegex.getREGEX_WORD());
         MorphAnalysisLemma morphAnalysisLemma = new MorphAnalysisLemma();
         HashMap<String, Float> queryLemma = morphAnalysisLemma.receivedLemmas(wordQuery);
@@ -195,34 +197,39 @@ public class StatisticsServiceImpl implements StatisticsService {
                 list.add(lemmaRepository.findByLemmaAndSite(l, siteEntity));
                 lemmas.add(list);
             }
-        }//todo сделать отдельный класс
+        }
+        if (lemmas.isEmpty()) {
+            return new Message(false, "Страницы по запросу не найдены");
+        }
         GroupLemmaBySite groupLemmaBySite = new GroupLemmaBySite(pageRepository);
         HashMap<Integer, LemmaSearch> lemmasOneSite = groupLemmaBySite.getLemmasOneSite(lemmas);
 
         FindSearchLemma findSearchLemma = new FindSearchLemma();
         List<IndexSearch> indexSearchList = new ArrayList<>();
         for (int key : lemmasOneSite.keySet()) {
-            IndexSearch indexSearch = new IndexSearch(findSearchLemma.generateSearchPage(lemmasOneSite.get(key)));
-            indexSearchList.add(indexSearch);//в каждом indexSearch список страниц, которые встречаются для искомых лемм
+            IndexSearch indexSearch = new IndexSearch(findSearchLemma.generateSearchIndex(lemmasOneSite.get(key)));
+            indexSearchList.add(indexSearch);
         }
         Relevance relevance = new Relevance(wordQuery);
-        SearchMessage searchMessage = new SearchMessage();
+        List<PageSearch> resultPage = new ArrayList<>();
+        TreeMap<Integer, PageSearch> pageSearchTreeMap;
         for (IndexSearch index : indexSearchList) {
-            TreeMap<Integer, PageSearch> pageSearchTreeMap = relevance.absoluteRelevance(index);
+            pageSearchTreeMap = relevance.absoluteRelevance(index);
             for (Integer key : pageSearchTreeMap.keySet()) {
-                if (pageSearchTreeMap.get(key).getSnippet().length() <= 3) {
-                    continue;
-                }
-                searchMessage.addData(pageSearchTreeMap.get(key));
+                resultPage.add(pageSearchTreeMap.get(key));
             }
         }
-        if (searchMessage.getData().isEmpty()) {
-            searchMessage.setResult(false);
-            searchMessage.setError("Страницы по запросу не найдены");
-            return searchMessage;
+        if (resultPage.isEmpty()) {
+            return new Message(false, "Страницы по запросу не найдены");
         }
+        SearchMessage searchMessage = new SearchMessage();
         searchMessage.setResult(true);
-        searchMessage.setCount(searchMessage.getData().size());
+        searchMessage.setCount(resultPage.size());
+        int maxPage = Math.min(resultPage.size(), limit);
+        int minPage = resultPage.size() < offset ? 0 : offset;
+        for (int i = minPage; i <= maxPage; i++) {
+            searchMessage.addData(resultPage.get(i));
+        }
         return searchMessage;
     }
 
@@ -254,8 +261,3 @@ public class StatisticsServiceImpl implements StatisticsService {
         return page;
     }
 }
-//            int countSearchPage = indexSearchList.stream().mapToInt(i -> i.getIndexes().size()).sum();
-//            pageEntity.setContent(connection.get().toString());
-//        pageEntity.setPath(urlPage);
-//        pageEntity.setSite(siteEntity);
-//        Connection connection = Jsoup.connect(url);

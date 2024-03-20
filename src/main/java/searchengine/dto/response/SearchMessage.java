@@ -6,9 +6,8 @@ import searchengine.dto.search.PageSearch;
 import java.util.TreeSet;
 
 @Data
-public class SearchMessage {
+public class SearchMessage implements MessageResponse {
     private boolean result;
-    private String error;
     private int count;
     private TreeSet<PageSearch> data;
 
@@ -19,4 +18,5 @@ public class SearchMessage {
     public void addData(PageSearch pageSearch) {
         data.add(pageSearch);
     }
+
 }

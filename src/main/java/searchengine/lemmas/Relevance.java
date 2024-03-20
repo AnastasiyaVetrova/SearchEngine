@@ -33,6 +33,7 @@ public class Relevance {
             }
         }
         relativeRelevance(pageSearchTreeMap);
+        System.out.println(pageSearchTreeMap.size());
         return pageSearchTreeMap;
     }
 
@@ -40,9 +41,11 @@ public class Relevance {
         float absRelevance = 0f;
         for (Integer key : pageSearchTreeMap.keySet()) {
             absRelevance = absRelevance + pageSearchTreeMap.get(key).getRelevance();
+
         }
         for (Integer key : pageSearchTreeMap.keySet()) {
             pageSearchTreeMap.get(key).setRelevance(pageSearchTreeMap.get(key).getRelevance() / absRelevance);
+            System.out.println(pageSearchTreeMap.get(key).getRelevance()+"   " +absRelevance);
         }
     }
 //todo поиск по лемам

@@ -3,7 +3,7 @@ package searchengine.dto.response;
 import lombok.Data;
 
 @Data
-public class Message {
+public class Message implements MessageResponse {
     private boolean result;
     private String error;
 

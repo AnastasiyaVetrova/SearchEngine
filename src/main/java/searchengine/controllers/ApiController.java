@@ -7,6 +7,7 @@ import org.springframework.web.bind.annotation.*;
 import searchengine.config.Site;
 import searchengine.config.SitesList;
 import searchengine.dto.response.Message;
+import searchengine.dto.response.MessageResponse;
 import searchengine.dto.response.SearchMessage;
 import searchengine.dto.statistics.StatisticsResponse;
 import searchengine.services.StatisticsService;
@@ -35,7 +36,7 @@ public class ApiController {
     }
 
     @GetMapping("/startIndexing")
-    public ResponseEntity<Message> startIndexing() {
+    public ResponseEntity<MessageResponse> startIndexing() {
         boolean isEnd = false;
         if (!isIndexingEnd) {
             return new ResponseEntity<>(new Message(isEnd, "Индексация уже запущена"), HttpStatus.OK);
@@ -60,7 +61,7 @@ public class ApiController {
     }
 
     @GetMapping("/stopIndexing")
-    public ResponseEntity<Message> stopIndexing() {
+    public ResponseEntity<MessageResponse> stopIndexing() {
         boolean isClose = false;
         if (isIndexingEnd) {
             return new ResponseEntity<>(new Message(isClose, "Индексация не запущена"), HttpStatus.OK);
@@ -75,7 +76,7 @@ public class ApiController {
     }
 
     @PostMapping("/indexPage")
-    public ResponseEntity<Message> indexPage(@RequestParam String url) {
+    public ResponseEntity<MessageResponse> indexPage(@RequestParam String url) {
         isIndexingEnd = false;
         boolean isIndexPage = statisticsService.startIndexPage(url);
         if (!isIndexPage) {
@@ -88,13 +89,16 @@ public class ApiController {
     }
 
     @GetMapping("/search")
-    public ResponseEntity<SearchMessage> search(@RequestParam String query, @RequestParam(required = false) Integer offset,
-                                                @RequestParam(required = false) Integer limit,
-                                                @RequestParam(required = false) String site) {
-        if (site == null) {
-            return new ResponseEntity<>(new SearchMessage(), HttpStatus.OK);
+    public ResponseEntity<MessageResponse> search(@RequestParam String query, @RequestParam(defaultValue = "0") Integer offset,
+                                                  @RequestParam(defaultValue = "10") Integer limit,
+                                                  @RequestParam(required = false) String site) {
+        if (offset >= limit) {
+            return new ResponseEntity<>(new Message(false, "Неверно заданы параметры поиска"), HttpStatus.OK);
         }
-        SearchMessage searchMessage = statisticsService.startSearch(query, site,offset,limit);
-        return new ResponseEntity<>(searchMessage, HttpStatus.OK);
+//        if (site == null) {
+//            return new ResponseEntity<>(new SearchMessage(), HttpStatus.OK);
+//        }
+        // SearchMessage searchMessage = statisticsService.startSearch(query, site, offset, limit);
+        return new ResponseEntity<>(statisticsService.startSearch(query, site, offset, limit), HttpStatus.OK);
     }
 }
