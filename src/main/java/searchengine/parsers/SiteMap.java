@@ -1,9 +1,9 @@
 package searchengine.parsers;
 
 import lombok.AllArgsConstructor;
-import searchengine.controllers.ApiController;
 import searchengine.model.PageEntity;
 import searchengine.model.SiteEntity;
+import searchengine.services.IndexingStartService;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -27,7 +27,7 @@ public class SiteMap extends RecursiveAction {
         List<SiteMap> siteLink = new ArrayList<>();
 
         for (PageEntity page : allUrl) {
-            if (ApiController.isIndexingEnd()) {
+            if (IndexingStartService.isIndexingEnd()) {
                 throw new CancellationException();
             }
             if (savePage.findPageToDB(page, siteEntity)) {

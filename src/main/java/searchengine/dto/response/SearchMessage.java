@@ -15,7 +15,7 @@ public class SearchMessage implements MessageResponse {
     public SearchMessage(ResultSearch resultSearch, Integer offset, Integer limit) {
         this.count = resultSearch.getData().size();
         this.data = new ArrayList<>();
-        int maxPage = Math.min(count, limit);
+        int maxPage = Math.min(count, limit + offset);
         int minPage = count < offset ? 0 : offset;
         for (int i = minPage; i < maxPage; i++) {
             data.add(resultSearch.getData().get(i));

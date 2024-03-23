@@ -21,14 +21,15 @@ jsoup:
 
 indexing-settings:
   sites:
-
     - url: https://www.lenta.ru
       name: Лента.ру
-    - url: https://www.playback.ru
-      name: PlayBack
+    - url: https://www.lenta123.ru
+      name: Лента123.ру
+#    - url: https://www.playback.ru
+#      name: PlayBack
     - url: https://et-cetera.ru/mobile/
       name: Сetera-mobile
-    - url: https://ipfran.ru
-      name: ipfran
-    - url: https://nikoartgallery.com
-      name: nikoartgallery
+#    - url: https://ipfran.ru
+#      name: ipfran
+#    - url: https://nikoartgallery.com
+#      name: nikoartgallery

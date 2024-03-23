@@ -5,10 +5,11 @@ import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
-import searchengine.controllers.ApiController;
+import searchengine.exeptoin.ConnectingToPageException;
 import searchengine.model.PageEntity;
 import searchengine.model.SiteEntity;
 import searchengine.regex.BaseRegex;
+import searchengine.services.IndexingStartService;
 
 import java.io.IOException;
 import java.util.TreeSet;
@@ -20,19 +21,17 @@ public class ParseHTML {
         TreeSet<PageEntity> treeSetUrl = new TreeSet<>();
         String baseUrlRegex = BaseRegex.getBaseUrl(siteEntity);
         String urlRegex = baseUrlRegex + "[^#\\s]+";
-
         if (page.getCode() != 200) {
             return treeSetUrl;
         }
-        Document document = Jsoup.parse(page.getContent(),siteEntity.getUrl());
+        Document document = Jsoup.parse(page.getContent(), siteEntity.getUrl());
         Elements elements = document.select("a[href]");
-
         for (Element element : elements) {
-            if (ApiController.isIndexingEnd()) {
+            if (IndexingStartService.isIndexingEnd()) {
                 throw new CancellationException();
             }
             try {
-                Thread.sleep(150);
+                Thread.sleep(500);
             } catch (Exception exception) {
                 exception.printStackTrace();
             }
@@ -48,16 +47,11 @@ public class ParseHTML {
                 pageEntity.setContent(connection.get().toString());
                 pageEntity.setCode(connection.response().statusCode());
             } catch (IOException e) {
-                page.setCode(500);
-                page.setContent(e.toString());
-                treeSetUrl.add(page);
-
+                new ConnectingToPageException(e.toString(), page, 500);
             } catch (Exception e) {
-                page.setCode(connection.response().statusCode());
-                page.setContent(e.toString());
-                treeSetUrl.add(page);
-
+                new ConnectingToPageException(e.toString(), page, connection.response().statusCode());
             } finally {
+                treeSetUrl.add(page);
                 pageEntity.setSite(siteEntity);
                 treeSetUrl.add(pageEntity);
             }
