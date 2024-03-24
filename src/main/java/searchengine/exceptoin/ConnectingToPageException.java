@@ -1,5 +1,6 @@
-package searchengine.exeptoin;
+package searchengine.exceptoin;
 
+import searchengine.Application;
 import searchengine.model.PageEntity;
 
 public class ConnectingToPageException extends Exception {
@@ -7,5 +8,6 @@ public class ConnectingToPageException extends Exception {
         super(message);
         pageEntity.setCode(code);
         pageEntity.setContent(message);
+        Application.LOG.error("Ошибка обработана: ConnectingToPageException \n:"+message);
     }
 }

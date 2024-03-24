@@ -5,7 +5,8 @@ import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
-import searchengine.exeptoin.ConnectingToPageException;
+import searchengine.Application;
+import searchengine.exceptoin.ConnectingToPageException;
 import searchengine.model.PageEntity;
 import searchengine.model.SiteEntity;
 import searchengine.regex.BaseRegex;
@@ -33,7 +34,7 @@ public class ParseHTML {
             try {
                 Thread.sleep(500);
             } catch (Exception exception) {
-                exception.printStackTrace();
+                Application.LOG.error("Поток проснулся");
             }
             String elemUrl = element.absUrl("href");
             boolean isRegexUrl = elemUrl.matches(urlRegex) && !isFile(elemUrl);

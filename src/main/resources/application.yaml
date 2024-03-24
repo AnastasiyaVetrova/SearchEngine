@@ -19,6 +19,19 @@ jsoup:
     userAgent: Mozilla/5.0 (Windows; U; WindowsNT 5.1; en-US; rv1.8.1.6) Gecko/20070725 Firefox/2.0.0.6
     referrer: http://www.google.com
 
+logging:
+  level:
+    org.springframework.web: "info"
+    org.hibernate: "error"
+    searchengine: "DEBUG"
+  file:
+    name: appLog.log
+  pattern:
+    file: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
+    console:  "%d{yyyy-MM-dd HH:mm:ss.SSS} %-5level %logger{36} - %msg%n"
+
+
+
 indexing-settings:
   sites:
     - url: https://www.lenta.ru

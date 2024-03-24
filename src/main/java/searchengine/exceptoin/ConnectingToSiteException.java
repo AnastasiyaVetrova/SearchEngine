@@ -1,5 +1,6 @@
-package searchengine.exeptoin;
+package searchengine.exceptoin;
 
+import searchengine.Application;
 import searchengine.model.EnumStatus;
 import searchengine.model.SiteEntity;
 import searchengine.repositories.SiteRepository;
@@ -11,5 +12,6 @@ public class ConnectingToSiteException extends Exception {
         siteEntity.setError(message);
         siteEntity.setStatus(EnumStatus.FAILED);
         siteRepository.save(siteEntity);
+        Application.LOG.error("Ошибка обработана: ConnectingToSiteException: \n" + message);
     }
 }

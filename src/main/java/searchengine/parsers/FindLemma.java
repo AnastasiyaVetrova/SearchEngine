@@ -3,6 +3,7 @@ package searchengine.parsers;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import org.jsoup.Jsoup;
+import searchengine.Application;
 import searchengine.lemmas.MorphAnalysisLemma;
 import searchengine.model.LemmaEntity;
 import searchengine.model.PageEntity;
@@ -46,7 +47,7 @@ public class FindLemma {
                 lemmaEntity = saveLemmaAndIndex.createLemma(lemma, pageEntity);
             }
         } catch (Throwable exception) {
-            System.out.println("Ошибка");
+            Application.LOG.error("Лемма отправлена на обработку повторно");
             return findLemma(lemma, pageEntity);
         }
         return lemmaEntity;
