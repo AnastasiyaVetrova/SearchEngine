@@ -52,7 +52,6 @@ public class ParseHTML {
             } catch (Exception e) {
                 new ConnectingToPageException(e.toString(), page, connection.response().statusCode());
             } finally {
-                treeSetUrl.add(page);
                 pageEntity.setSite(siteEntity);
                 treeSetUrl.add(pageEntity);
             }

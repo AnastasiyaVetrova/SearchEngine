@@ -24,9 +24,4 @@ public class SavePage {
         siteRepository.save(siteEntity);
     }
 
-//    @Transactional
-//    public void savePageToDB (TreeSet<PageEntity> pageEntities, SiteEntity siteEntity) {
-//        pageRepository.saveAll(pageEntities);
-//        siteRepository.save(siteEntity);
-//    }
 }

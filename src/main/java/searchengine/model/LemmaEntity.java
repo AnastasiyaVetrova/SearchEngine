@@ -17,7 +17,7 @@ public class LemmaEntity {
     private SiteEntity site;
     @Column(name = "lemma", columnDefinition = "VARCHAR(255)", nullable = false)
     private String lemma;
-    @Column(name = "frequency", nullable = false)//количество страниц, на которых слово встречается хотя бы один раз.
+    @Column(name = "frequency", nullable = false)
     private int frequency;
     @OneToMany(mappedBy = "lemma", cascade = CascadeType.REMOVE, fetch = FetchType.LAZY)
     private List<IndexEntity> indexEntity;
